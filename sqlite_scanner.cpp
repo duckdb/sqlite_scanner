@@ -136,19 +136,14 @@ public:
 
 extern "C" {
 DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
-
     SqliteScanFunction sqlite_fun;
     CreateTableFunctionInfo sqlite_info(sqlite_fun);
-
-
     Connection con(db);
     con.BeginTransaction();
     auto &context = *con.context;
     auto &catalog = Catalog::GetCatalog(context);
     catalog.CreateTableFunction(context, &sqlite_info);
     con.Commit();
-
-
 }
 
 DUCKDB_EXTENSION_API const char *sqlite_scanner_version() {

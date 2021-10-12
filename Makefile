@@ -9,8 +9,8 @@ clean:
 sqlite:
 	mkdir -p sqlite/build/debug && \
 	cd sqlite/build/debug && \
-	../../configure --prefix=`pwd` --disable-tcl --enable-debug --enable-static && \
-	make -j install
+	../../configure --disable-tcl --enable-debug && \
+	make -j
 
 duckdb:
 	cd duckdb && \

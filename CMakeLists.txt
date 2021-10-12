@@ -24,13 +24,12 @@ endif()
 include_directories(duckdb/src/include)
 include_directories(sqlite/build/debug/include)
 link_directories(duckdb/build/debug/src)
-link_directories(sqlite/build/debug/lib)
 
 
-add_library(sqlite_scanner SHARED sqlite_scanner.cpp)
+add_library(sqlite_scanner SHARED sqlite_scanner.cpp sqlite/build/debug/sqlite3.o)
 set_target_properties(sqlite_scanner PROPERTIES PREFIX "")
 target_link_libraries(sqlite_scanner duckdb)
-target_link_libraries(sqlite_scanner libsqlite3.a)
+target_link_libraries(sqlite_scanner )
 
 set_target_properties(sqlite_scanner PROPERTIES SUFFIX
                                                          ".duckdb_extension")

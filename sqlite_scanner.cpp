@@ -6,6 +6,7 @@
 #include "duckdb/common/types/date.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/parallel/parallel_state.hpp"
+#include "duckdb/storage/statistics/validity_statistics.hpp"
 
 using namespace duckdb;
 
@@ -14,7 +15,10 @@ struct SqliteBindData : public FunctionData {
   string table_name;
   idx_t max_rowid;
   vector<column_t> column_ids;
+  vector<bool> not_nulls;
   vector<string> names;
+  vector<LogicalType> types;
+
   idx_t rows_per_group =
       1000000; // TODO this should be a parameter to the scan function
 };
@@ -56,10 +60,15 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
                &res, 0),
            db);
 
+  vector<bool> not_nulls;
+
   while (sqlite3_step(res) == SQLITE_ROW) {
     auto sqlite_colname = string((const char *)sqlite3_column_text(res, 1));
     auto sqlite_type = string((const char *)sqlite3_column_text(res, 2));
+    auto not_null = sqlite3_column_int(res, 3);
+
     names.push_back(sqlite_colname);
+    not_nulls.push_back((bool)not_null);
 
     if (sqlite_type == "INTEGER") {
       return_types.push_back(LogicalType::INTEGER);
@@ -90,10 +99,13 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
   sqlite3_close(db);
 
   auto result = make_unique<SqliteBindData>();
+  result->not_nulls = not_nulls;
   result->file_name = file_name;
   result->table_name = table_name;
   result->max_rowid = max_rowid;
   result->names = names;
+  result->types = return_types;
+
   return move(result);
 }
 
@@ -159,7 +171,6 @@ static unique_ptr<ParallelState>
 SqliteInitParallelState(ClientContext &context, const FunctionData *bind_data_p,
                         const vector<column_t> &column_ids,
                         TableFilterCollection *filters) {
-  auto &bind_data = (SqliteBindData &)*bind_data_p;
   auto result = make_unique<SqliteParallelState>();
   result->row_group_index = 0;
   return move(result);
@@ -250,18 +261,21 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
     for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
       auto &out_vec = output.data[col_idx];
       auto &mask = FlatVector::Validity(out_vec);
-      // TODO interpret NOT NULL in schema
       auto val = sqlite3_column_value(state.res, col_idx);
 
+      auto not_null = bind_data.not_nulls[bind_data.column_ids[col_idx]];
       auto sqlite_column_type = sqlite3_value_type(val);
       if (sqlite_column_type == SQLITE_NULL) {
+        if (not_null) {
+          throw std::runtime_error(
+              "Column was declared as NOT NULL but got one anyway");
+        }
         mask.Set(out_idx, false);
         continue;
       }
 
       switch (out_vec.GetType().id()) {
       case LogicalTypeId::INTEGER: {
-        // TODO check for other types too
         if (sqlite_column_type != SQLITE_INTEGER) {
           throw std::runtime_error("Expected integer, got something else");
         }
@@ -270,21 +284,35 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
         break;
       }
       case LogicalTypeId::VARCHAR: {
+        if (sqlite_column_type != SQLITE_TEXT) {
+          throw std::runtime_error("Expected string, got something else");
+        }
         auto out_ptr = FlatVector::GetData<string_t>(out_vec);
         out_ptr[out_idx] = StringVector::AddString(
-            out_vec, (const char *)sqlite3_value_text(val));
+            out_vec, (const char *)sqlite3_value_text(val),
+            sqlite3_value_bytes(val));
         break;
       }
       case LogicalTypeId::DATE: {
+        if (sqlite_column_type != SQLITE_TEXT) {
+          throw std::runtime_error("Expected string, got something else");
+        }
         auto out_ptr = FlatVector::GetData<date_t>(out_vec);
-        out_ptr[out_idx] = Date::EpochToDate(sqlite3_value_int64(val));
+        out_ptr[out_idx] = Date::FromCString(
+            (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
         break;
       }
       case LogicalTypeId::DECIMAL: {
+        if (sqlite_column_type != SQLITE_FLOAT &&
+            sqlite_column_type != SQLITE_INTEGER) {
+          throw std::runtime_error(
+              "Expected float or integer, got something else");
+        }
         switch (out_vec.GetType().InternalType()) {
         case PhysicalType::INT64: {
           auto out_ptr = FlatVector::GetData<int64_t>(out_vec);
-          out_ptr[out_idx] = (int64_t)sqlite3_value_double(val) * 100;
+          // TODO this * 100 of course depends on the DECIMAL type
+          out_ptr[out_idx] = sqlite3_value_double(val) * 100;
           break;
         }
         default:
@@ -311,21 +339,37 @@ static void SqliteFuncParallel(ClientContext &context,
 
 // TODO add remaining types
 // TODO selection pushdown
-// TODO progress bar
 // TODO what if table changes between bind and scan? keep transaction?
+
+static string SqliteTotString(const FunctionData *bind_data_p) {
+  auto &bind_data = (SqliteBindData &)*bind_data_p;
+  return StringUtil::Format("%s:%s", bind_data.file_name, bind_data.table_name);
+}
+//
+// static unique_ptr<BaseStatistics> SqliteStatistics(ClientContext &context,
+// const FunctionData *bind_data_p,
+//                                                         column_t
+//                                                         column_index) {
+//    auto &bind_data = (SqliteBindData &)*bind_data_p;
+//    // TODO this does not seem to work, only declaring NULLness
+//    auto stats = make_unique<BaseStatistics>(bind_data.types[column_index]);
+//    stats->validity_stats =
+//    make_unique<ValidityStatistics>(!bind_data.not_nulls[column_index]);
+//    return stats;
+//}
 
 class SqliteScanFunction : public TableFunction {
 public:
   SqliteScanFunction()
-      : TableFunction(
-            "sqlite_scan", {LogicalType::VARCHAR, LogicalType::VARCHAR},
-            SqliteScan, SqliteBind, SqliteInit, /* statistics */ nullptr,
-            /* cleanup */ SqliteCleanup,
-            /* dependency */ nullptr, SqliteCardinality,
-            /* pushdown_complex_filter */ nullptr, /* to_string */ nullptr,
-            SqliteMaxThreads, SqliteInitParallelState, SqliteFuncParallel,
-            SqliteParallelInit, SqliteParallelStateNext, true, false, nullptr) {
-  }
+      : TableFunction("sqlite_scan",
+                      {LogicalType::VARCHAR, LogicalType::VARCHAR}, SqliteScan,
+                      SqliteBind, SqliteInit, /*statistics */ nullptr,
+                      SqliteCleanup,
+                      /* dependency */ nullptr, SqliteCardinality,
+                      /* pushdown_complex_filter */ nullptr, SqliteTotString,
+                      SqliteMaxThreads, SqliteInitParallelState,
+                      SqliteFuncParallel, SqliteParallelInit,
+                      SqliteParallelStateNext, true, false, nullptr) {}
 };
 
 extern "C" {

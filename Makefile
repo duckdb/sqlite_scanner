@@ -26,8 +26,8 @@ release:
 	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. && \
 	cmake --build .
 
-test: debug
-	./duckdb/build/debug/duckdb < test.sql
+test: release
+	./duckdb/build/release/duckdb < test.sql
 
 format:
 	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp 

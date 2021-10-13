@@ -1,8 +1,9 @@
 -- noinspection SqlNoDataSourceInspectionForFile
-pragma threads=4;
-LOAD 'build/debug/sqlite_scanner.duckdb_extension';
+LOAD 'build/release/sqlite_scanner.duckdb_extension';
+-- select * from sqlite_scan('borked.db', 'b') limit 10;
 
-select * from sqlite_scan('lineitem.db', 'lineitem') limit 10;
+-- select l_extendedprice, l_tax from sqlite_scan('lineitem.db', 'lineitem') limit 10;
+
 select
   l_returnflag,
   l_linestatus,
@@ -15,7 +16,8 @@ select
   avg(l_discount) as avg_disc,
   count(*) as count_order
 from
-  (select * from sqlite_scan('lineitem.db', 'lineitem') limit 1000000) lineitem
+--lineitem
+ sqlite_scan('lineitem.db', 'lineitem')
 where
   l_shipdate <= '1998-09-02'
 group by

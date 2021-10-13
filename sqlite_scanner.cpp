@@ -1,5 +1,6 @@
 #define DUCKDB_BUILD_LOADABLE_EXTENSION
 #include "duckdb.hpp"
+
 #include "sqlite3.h"
 #include "duckdb/function/table_function.hpp"
 #include "duckdb/common/types/date.hpp"
@@ -12,6 +13,8 @@ struct SqliteBindData : public FunctionData {
   string file_name;
   string table_name;
   idx_t max_rowid;
+  vector<column_t> column_ids;
+  vector<string> names;
   idx_t rows_per_group =
       1000000; // TODO this should be a parameter to the scan function
 };
@@ -63,6 +66,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
     } else if (sqlite_type == "DATE") {
       return_types.push_back(LogicalType::DATE);
     } else if (sqlite_type.rfind("DECIMAL", 0) == 0) {
+      // TODO parse this thing
       return_types.push_back(LogicalType::DECIMAL(15, 2));
     } else if (sqlite_type.rfind("CHAR", 0) == 0 ||
                sqlite_type.rfind("VARCHAR", 0) == 0) {
@@ -81,6 +85,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
     throw std::runtime_error("could not find max rowid?");
   }
   idx_t max_rowid = sqlite3_column_int64(res, 0);
+
   sqlite3_reset(res);
   sqlite3_close(db);
 
@@ -88,6 +93,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
   result->file_name = file_name;
   result->table_name = table_name;
   result->max_rowid = max_rowid;
+  result->names = names;
   return move(result);
 }
 
@@ -99,23 +105,29 @@ static void SqliteInitInternal(ClientContext &context,
   D_ASSERT(local_state);
   D_ASSERT(rowid_min < rowid_max);
 
-  sqlite3_reset(local_state->res);
-  sqlite3_close(local_state->db);
-
   check_ok(sqlite3_open_v2(bind_data->file_name.c_str(), &local_state->db,
                            SQLITE_OPEN_READONLY, nullptr),
            local_state->db);
-  check_ok(sqlite3_prepare_v2(local_state->db,
-                              string("SELECT * FROM " + bind_data->table_name +
-                                     " WHERE ROWID BETWEEN ? AND ?")
-                                  .c_str(),
-                              -1, &local_state->res, 0),
+
+  string col_names = "";
+  for (idx_t col_id_idx = 0; col_id_idx < bind_data->column_ids.size();
+       col_id_idx++) {
+    auto column_id = bind_data->column_ids[col_id_idx];
+
+    col_names += bind_data->names[column_id];
+    if (col_id_idx < bind_data->column_ids.size() - 1) {
+      col_names += ", ";
+    }
+  }
+
+  auto sql = StringUtil::Format(
+      "SELECT %s FROM %s WHERE ROWID BETWEEN %d AND %d", col_names,
+      bind_data->table_name, rowid_min, rowid_max);
+
+  check_ok(sqlite3_prepare_v2(local_state->db, sql.c_str(), -1,
+                              &local_state->res, 0),
            local_state->db);
 
-  check_ok(sqlite3_bind_int64(local_state->res, 1, rowid_min), local_state->db);
-  check_ok(sqlite3_bind_int64(local_state->res, 2, rowid_max), local_state->db);
-
-  // TODO we need to close these again, too
   local_state->done = false;
 }
 
@@ -124,7 +136,8 @@ SqliteInit(ClientContext &context, const FunctionData *bind_data_p,
            const vector<column_t> &column_ids, TableFilterCollection *filters) {
   D_ASSERT(bind_data_p);
   auto bind_data = (SqliteBindData *)bind_data_p;
-  // TODO deal with column_ids and filters
+  bind_data->column_ids = column_ids;
+  // TODO deal with filters
   auto result = make_unique<SqliteOperatorData>();
   SqliteInitInternal(context, bind_data, result.get(), 0, bind_data->max_rowid);
   return move(result);
@@ -184,7 +197,9 @@ SqliteParallelInit(ClientContext &context, const FunctionData *bind_data_p,
                    const vector<column_t> &column_ids,
                    TableFilterCollection *filters) {
   auto result = make_unique<SqliteOperatorData>();
+  auto bind_data = (SqliteBindData *)bind_data_p;
 
+  bind_data->column_ids = column_ids;
   if (!SqliteParallelStateNext(context, bind_data_p, result.get(),
                                parallel_state_p)) {
     return nullptr;
@@ -235,34 +250,41 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
     for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
       auto &out_vec = output.data[col_idx];
       auto &mask = FlatVector::Validity(out_vec);
-      if (sqlite3_column_type(state.res, col_idx) == SQLITE_NULL) {
+      // TODO interpret NOT NULL in schema
+      auto val = sqlite3_column_value(state.res, col_idx);
+
+      auto sqlite_column_type = sqlite3_value_type(val);
+      if (sqlite_column_type == SQLITE_NULL) {
         mask.Set(out_idx, false);
         continue;
       }
+
       switch (out_vec.GetType().id()) {
       case LogicalTypeId::INTEGER: {
+        // TODO check for other types too
+        if (sqlite_column_type != SQLITE_INTEGER) {
+          throw std::runtime_error("Expected integer, got something else");
+        }
         auto out_ptr = FlatVector::GetData<int32_t>(out_vec);
-        out_ptr[out_idx] = sqlite3_column_int(state.res, col_idx);
+        out_ptr[out_idx] = sqlite3_value_int(val);
         break;
       }
       case LogicalTypeId::VARCHAR: {
         auto out_ptr = FlatVector::GetData<string_t>(out_vec);
         out_ptr[out_idx] = StringVector::AddString(
-            out_vec, (const char *)sqlite3_column_text(state.res, col_idx));
+            out_vec, (const char *)sqlite3_value_text(val));
         break;
       }
       case LogicalTypeId::DATE: {
         auto out_ptr = FlatVector::GetData<date_t>(out_vec);
-        out_ptr[out_idx] =
-            Date::EpochToDate(sqlite3_column_int64(state.res, col_idx));
+        out_ptr[out_idx] = Date::EpochToDate(sqlite3_value_int64(val));
         break;
       }
       case LogicalTypeId::DECIMAL: {
         switch (out_vec.GetType().InternalType()) {
         case PhysicalType::INT64: {
           auto out_ptr = FlatVector::GetData<int64_t>(out_vec);
-          out_ptr[out_idx] =
-              (int64_t)sqlite3_column_double(state.res, col_idx) * 100;
+          out_ptr[out_idx] = (int64_t)sqlite3_value_double(val) * 100;
           break;
         }
         default:
@@ -288,9 +310,6 @@ static void SqliteFuncParallel(ClientContext &context,
 }
 
 // TODO add remaining types
-// TODO cleanup connection
-// TODO parallel scans (use ROWID)
-// TODO projection pushdown
 // TODO selection pushdown
 // TODO progress bar
 // TODO what if table changes between bind and scan? keep transaction?
@@ -305,8 +324,8 @@ public:
             /* dependency */ nullptr, SqliteCardinality,
             /* pushdown_complex_filter */ nullptr, /* to_string */ nullptr,
             SqliteMaxThreads, SqliteInitParallelState, SqliteFuncParallel,
-            SqliteParallelInit, SqliteParallelStateNext, false, false,
-            nullptr) {}
+            SqliteParallelInit, SqliteParallelStateNext, true, false, nullptr) {
+  }
 };
 
 extern "C" {

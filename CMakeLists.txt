@@ -22,11 +22,11 @@ if(WIN32 AND NOT MSVC)
 endif()
 
 include_directories(duckdb/src/include)
-include_directories(sqlite/build/release/include)
+include_directories(sqlite/)
 link_directories(duckdb/build/release/src)
 
 
-add_library(sqlite_scanner SHARED sqlite_scanner.cpp sqlite/build/release/sqlite3.o)
+add_library(sqlite_scanner SHARED sqlite_scanner.cpp sqlite/sqlite3.c)
 set_target_properties(sqlite_scanner PROPERTIES PREFIX "")
 target_link_libraries(sqlite_scanner duckdb)
 target_link_libraries(sqlite_scanner )

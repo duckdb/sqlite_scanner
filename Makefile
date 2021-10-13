@@ -1,22 +1,10 @@
-.PHONY: all debug clean sqlite duckdb format release duckdb_release sqlite_release
+.PHONY: all debug clean duckdb format release duckdb_release
 all: debug
 
 clean:
 	rm -rf build
-	rm -rf sqlite/build
 	rm -rf duckdb/build
 
-sqlite:
-	mkdir -p sqlite/build/debug && \
-	cd sqlite/build/debug && \
-	../../configure --disable-tcl --enable-debug && \
-	make -j
-
-sqlite_release:
-	mkdir -p sqlite/build/release && \
-	cd sqlite/build/release && \
-	../../configure --disable-tcl && \
-	make -j
 
 duckdb:
 	cd duckdb && \
@@ -32,10 +20,10 @@ debug:
 	cmake  -DCMAKE_BUILD_TYPE=Debug ../.. && \
 	cmake --build .
 
-release: duckdb_release sqlite_release
+release:
 	mkdir -p build/release && \
 	cd build/release && \
-	cmake  -DCMAKE_BUILD_TYPE=Release ../.. && \
+	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. && \
 	cmake --build .
 
 test: debug

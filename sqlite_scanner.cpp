@@ -20,7 +20,7 @@ struct SqliteBindData : public FunctionData {
   vector<LogicalType> types;
 
   idx_t rows_per_group =
-      100000; // TODO this should be a parameter to the scan function
+      1000000; // TODO this should be a parameter to the scan function
 };
 
 struct SqliteOperatorData : public FunctionOperatorData {
@@ -70,7 +70,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
     names.push_back(sqlite_colname);
     not_nulls.push_back((bool)not_null);
 
-    if (sqlite_type == "INTEGER") {
+    if (sqlite_type == "INTEGER" || sqlite_type == "INT") {
       return_types.push_back(LogicalType::INTEGER);
     } else if (sqlite_type == "DATE") {
       return_types.push_back(LogicalType::DATE);

@@ -1,4 +1,4 @@
-.PHONY: all debug clean duckdb format release duckdb_release
+.PHONY: all clean format debug release duckdb_debug duckdb_release
 all: debug
 
 clean:
@@ -6,7 +6,7 @@ clean:
 	rm -rf duckdb/build
 
 
-duckdb:
+duckdb_debug:
 	cd duckdb && \
 	DISABLE_SANITIZER=1 BUILD_TPCH=1 make debug
 
@@ -14,13 +14,13 @@ duckdb_release:
 	cd duckdb && \
 	DISABLE_SANITIZER=1 BUILD_TPCH=1 make
 
-debug: 
+debug: duckdb_debug
 	mkdir -p build/debug && \
 	cd build/debug && \
 	cmake  -DCMAKE_BUILD_TYPE=Debug ../.. && \
 	cmake --build .
 
-release:
+release: duckdb_release
 	mkdir -p build/release && \
 	cd build/release && \
 	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. && \

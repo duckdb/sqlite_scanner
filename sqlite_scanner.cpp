@@ -20,7 +20,7 @@ struct SqliteBindData : public FunctionData {
   vector<LogicalType> types;
 
   idx_t rows_per_group =
-      1000000; // TODO this should be a parameter to the scan function
+      100000; // TODO this should be a parameter to the scan function
 };
 
 struct SqliteOperatorData : public FunctionOperatorData {

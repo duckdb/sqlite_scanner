@@ -3,8 +3,7 @@ LOAD 'build/release/sqlite_scanner.duckdb_extension';
 -- select * from sqlite_scan('borked.db', 'b') limit 10;
 -- pragma threads=1;
 -- select l_shipdate, l_discount from sqlite_scan('lineitem.db', 'lineitem') limit 10;
-pragma enable_profiling;
-
+.timer on
 select
   l_returnflag,
   l_linestatus,

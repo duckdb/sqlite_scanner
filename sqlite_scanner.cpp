@@ -225,8 +225,8 @@ static void SqliteCleanup(ClientContext &context, const FunctionData *bind_data,
   if (state.done) {
     return;
   }
-  sqlite3_reset(state.res);
-  sqlite3_close(state.db);
+  check_ok(sqlite3_finalize(state.res), state.db);
+  check_ok(sqlite3_close(state.db), state.db);
   state.db = nullptr;
   state.res = nullptr;
   state.done = true;

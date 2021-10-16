@@ -4,6 +4,7 @@
 #include "sqlite3.h"
 #include "duckdb/function/table_function.hpp"
 #include "duckdb/common/types/date.hpp"
+#include "duckdb/common/types/timestamp.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/parallel/parallel_state.hpp"
 #include "duckdb/storage/statistics/validity_statistics.hpp"
@@ -64,22 +65,33 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
 
   while (sqlite3_step(res) == SQLITE_ROW) {
     auto sqlite_colname = string((const char *)sqlite3_column_text(res, 1));
-    auto sqlite_type = string((const char *)sqlite3_column_text(res, 2));
+    auto sqlite_type =
+        StringUtil::Upper(string((const char *)sqlite3_column_text(res, 2)));
     auto not_null = sqlite3_column_int(res, 3);
 
     names.push_back(sqlite_colname);
     not_nulls.push_back((bool)not_null);
 
-    if (sqlite_type == "INTEGER" || sqlite_type == "INT") {
+    if (sqlite_type == "SMALLINT") {
+      return_types.push_back(LogicalType::SMALLINT);
+    } else if (sqlite_type == "INTEGER" || sqlite_type == "INT") {
       return_types.push_back(LogicalType::INTEGER);
     } else if (sqlite_type == "DATE") {
       return_types.push_back(LogicalType::DATE);
+    } else if (sqlite_type == "TIMESTAMP") {
+      return_types.push_back(LogicalType::TIMESTAMP);
+    } else if (sqlite_type == "REAL" || sqlite_type == "NUMERIC") {
+      return_types.push_back(LogicalType::DOUBLE);
     } else if (sqlite_type.rfind("DECIMAL", 0) == 0) {
       // TODO parse this thing
       return_types.push_back(LogicalType::DECIMAL(15, 2));
     } else if (sqlite_type.rfind("CHAR", 0) == 0 ||
-               sqlite_type.rfind("VARCHAR", 0) == 0) {
+               sqlite_type.rfind("VARCHAR", 0) == 0 ||
+               sqlite_type == "BLOB SUB_TYPE TEXT") {
       return_types.push_back(LogicalType::VARCHAR);
+    } else if (sqlite_type == "BLOB") {
+      return_types.push_back(LogicalType::BLOB);
+
     } else {
       throw std::runtime_error("Unsupported type " + sqlite_type);
     }
@@ -278,10 +290,20 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
       }
 
       switch (out_vec.GetType().id()) {
+      case LogicalTypeId::SMALLINT:
+        if (sqlite_column_type != SQLITE_INTEGER) {
+          throw std::runtime_error("Expected integer, got something else");
+        }
+        // TODO do we need an overflow check here?
+        FlatVector::GetData<int16_t>(out_vec)[out_idx] = sqlite3_value_int(val);
+        break;
+
       case LogicalTypeId::INTEGER:
         if (sqlite_column_type != SQLITE_INTEGER) {
           throw std::runtime_error("Expected integer, got something else");
         }
+        // TODO do we need an overflow check here?
+
         FlatVector::GetData<int32_t>(out_vec)[out_idx] = sqlite3_value_int(val);
         break;
 
@@ -292,7 +314,15 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
         FlatVector::GetData<int64_t>(out_vec)[out_idx] =
             sqlite3_value_int64(val);
         break;
-
+      case LogicalTypeId::DOUBLE:
+        if (sqlite_column_type != SQLITE_FLOAT &&
+            sqlite_column_type != SQLITE_INTEGER) {
+          throw std::runtime_error(
+              "Expected float or integer, got something else");
+        }
+        FlatVector::GetData<double>(out_vec)[out_idx] =
+            sqlite3_value_double(val);
+        break;
       case LogicalTypeId::VARCHAR:
         if (sqlite_column_type != SQLITE_TEXT) {
           throw std::runtime_error("Expected string, got something else");
@@ -309,6 +339,15 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
         }
         FlatVector::GetData<date_t>(out_vec)[out_idx] = Date::FromCString(
             (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
+        break;
+
+      case LogicalTypeId::TIMESTAMP:
+        if (sqlite_column_type != SQLITE_TEXT) {
+          throw std::runtime_error("Expected string, got something else");
+        }
+        FlatVector::GetData<timestamp_t>(out_vec)[out_idx] =
+            Timestamp::FromCString((const char *)sqlite3_value_text(val),
+                                   sqlite3_value_bytes(val));
         break;
 
       case LogicalTypeId::DECIMAL:

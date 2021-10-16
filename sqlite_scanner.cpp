@@ -125,8 +125,11 @@ static void SqliteInitInternal(ClientContext &context,
   for (idx_t col_id_idx = 0; col_id_idx < bind_data->column_ids.size();
        col_id_idx++) {
     auto column_id = bind_data->column_ids[col_id_idx];
-
-    col_names += bind_data->names[column_id];
+    if (column_id == COLUMN_IDENTIFIER_ROW_ID) {
+      col_names += "ROWID";
+    } else {
+      col_names += bind_data->names[column_id];
+    }
     if (col_id_idx < bind_data->column_ids.size() - 1) {
       col_names += ", ";
     }
@@ -275,52 +278,58 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
       }
 
       switch (out_vec.GetType().id()) {
-      case LogicalTypeId::INTEGER: {
+      case LogicalTypeId::INTEGER:
         if (sqlite_column_type != SQLITE_INTEGER) {
           throw std::runtime_error("Expected integer, got something else");
         }
-        auto out_ptr = FlatVector::GetData<int32_t>(out_vec);
-        out_ptr[out_idx] = sqlite3_value_int(val);
+        FlatVector::GetData<int32_t>(out_vec)[out_idx] = sqlite3_value_int(val);
         break;
-      }
-      case LogicalTypeId::VARCHAR: {
+
+      case LogicalTypeId::BIGINT:
+        if (sqlite_column_type != SQLITE_INTEGER) {
+          throw std::runtime_error("Expected integer, got something else");
+        }
+        FlatVector::GetData<int64_t>(out_vec)[out_idx] =
+            sqlite3_value_int64(val);
+        break;
+
+      case LogicalTypeId::VARCHAR:
         if (sqlite_column_type != SQLITE_TEXT) {
           throw std::runtime_error("Expected string, got something else");
         }
-        auto out_ptr = FlatVector::GetData<string_t>(out_vec);
-        out_ptr[out_idx] = StringVector::AddString(
-            out_vec, (const char *)sqlite3_value_text(val),
-            sqlite3_value_bytes(val));
+        FlatVector::GetData<string_t>(out_vec)[out_idx] =
+            StringVector::AddString(out_vec,
+                                    (const char *)sqlite3_value_text(val),
+                                    sqlite3_value_bytes(val));
         break;
-      }
-      case LogicalTypeId::DATE: {
+
+      case LogicalTypeId::DATE:
         if (sqlite_column_type != SQLITE_TEXT) {
           throw std::runtime_error("Expected string, got something else");
         }
-        auto out_ptr = FlatVector::GetData<date_t>(out_vec);
-        out_ptr[out_idx] = Date::FromCString(
+        FlatVector::GetData<date_t>(out_vec)[out_idx] = Date::FromCString(
             (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
         break;
-      }
-      case LogicalTypeId::DECIMAL: {
+
+      case LogicalTypeId::DECIMAL:
         if (sqlite_column_type != SQLITE_FLOAT &&
             sqlite_column_type != SQLITE_INTEGER) {
           throw std::runtime_error(
               "Expected float or integer, got something else");
         }
         switch (out_vec.GetType().InternalType()) {
-        case PhysicalType::INT64: {
-          auto out_ptr = FlatVector::GetData<int64_t>(out_vec);
+        case PhysicalType::INT64:
           // TODO this * 100 of course depends on the DECIMAL type
-          out_ptr[out_idx] = sqlite3_value_double(val) * 100;
+          FlatVector::GetData<int64_t>(out_vec)[out_idx] =
+              sqlite3_value_double(val) * 100;
           break;
-        }
+
         default:
           throw std::runtime_error(
               TypeIdToString(out_vec.GetType().InternalType()));
         }
         break;
-      }
+
       default:
         throw std::runtime_error(out_vec.GetType().ToString());
       }

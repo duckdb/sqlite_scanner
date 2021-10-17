@@ -128,19 +128,13 @@ static void SqliteInitInternal(ClientContext &context,
                            SQLITE_OPEN_READONLY, nullptr),
            local_state->db);
 
-  string col_names = "";
-  for (idx_t col_id_idx = 0; col_id_idx < bind_data->column_ids.size();
-       col_id_idx++) {
-    auto column_id = bind_data->column_ids[col_id_idx];
-    if (column_id == COLUMN_IDENTIFIER_ROW_ID) {
-      col_names += "ROWID";
-    } else {
-      col_names += bind_data->names[column_id];
-    }
-    if (col_id_idx < bind_data->column_ids.size() - 1) {
-      col_names += ", ";
-    }
-  }
+  auto col_names = StringUtil::Join(
+      bind_data->column_ids.data(), bind_data->column_ids.size(), ", ",
+      [&](const idx_t column_id) {
+        return column_id == COLUMN_IDENTIFIER_ROW_ID
+                   ? "ROWID"
+                   : bind_data->names[column_id];
+      });
 
   auto sql = StringUtil::Format(
       "SELECT %s FROM %s WHERE ROWID BETWEEN %d AND %d", col_names,

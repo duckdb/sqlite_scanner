@@ -8,6 +8,8 @@
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/parallel/parallel_state.hpp"
 #include "duckdb/storage/statistics/validity_statistics.hpp"
+#include "duckdb/parser/parser.hpp"
+#include "duckdb/parser/expression/cast_expression.hpp"
 
 using namespace duckdb;
 
@@ -62,42 +64,35 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
            db);
 
   vector<bool> not_nulls;
+  vector<string> sqlite_types;
 
   while (sqlite3_step(res) == SQLITE_ROW) {
     auto sqlite_colname = string((const char *)sqlite3_column_text(res, 1));
-    auto sqlite_type =
-        StringUtil::Upper(string((const char *)sqlite3_column_text(res, 2)));
+    auto sqlite_type = string((const char *)sqlite3_column_text(res, 2));
+    // Sqlite specialty, untyped columns
+    if (sqlite_type == "") {
+      sqlite_type = "BLOB";
+    }
     auto not_null = sqlite3_column_int(res, 3);
 
     names.push_back(sqlite_colname);
     not_nulls.push_back((bool)not_null);
-
-    if (sqlite_type == "SMALLINT") {
-      return_types.push_back(LogicalType::SMALLINT);
-    } else if (sqlite_type == "INTEGER" || sqlite_type == "INT") {
-      return_types.push_back(LogicalType::INTEGER);
-    } else if (sqlite_type == "DATE") {
-      return_types.push_back(LogicalType::DATE);
-    } else if (sqlite_type == "TIMESTAMP") {
-      return_types.push_back(LogicalType::TIMESTAMP);
-    } else if (sqlite_type == "REAL" || sqlite_type == "NUMERIC") {
-      return_types.push_back(LogicalType::DOUBLE);
-    } else if (sqlite_type.rfind("DECIMAL", 0) == 0) {
-      // TODO parse this thing
-      return_types.push_back(LogicalType::DECIMAL(15, 2));
-    } else if (sqlite_type.rfind("CHAR", 0) == 0 ||
-               sqlite_type.rfind("VARCHAR", 0) == 0 ||
-               sqlite_type == "BLOB SUB_TYPE TEXT") {
-      return_types.push_back(LogicalType::VARCHAR);
-    } else if (sqlite_type == "BLOB") {
-      return_types.push_back(LogicalType::BLOB);
-
-    } else {
-      throw std::runtime_error("Unsupported type " + sqlite_type);
-    }
+    sqlite_types.push_back(sqlite_type);
   }
   sqlite3_reset(res);
 
+  // we use the duckdb/postgres parser to parse these types, no need to
+  // duplicate
+  auto cast_string = StringUtil::Join(
+      sqlite_types.data(), sqlite_types.size(), ", ",
+      [](const string st) { return StringUtil::Format("?::%s", st); });
+  auto cast_expressions = Parser::ParseExpressionList(cast_string);
+
+  for (auto &e : cast_expressions) {
+    D_ASSERT(e->type == ExpressionType::OPERATOR_CAST);
+    auto &cast = (CastExpression &)*e;
+    return_types.push_back(cast.cast_type);
+  }
   check_ok(sqlite3_prepare_v2(
                db, string("SELECT MAX(ROWID) FROM " + table_name).c_str(), -1,
                &res, 0),
@@ -350,6 +345,12 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
                                    sqlite3_value_bytes(val));
         break;
 
+      case LogicalTypeId::BLOB:
+        FlatVector::GetData<string_t>(out_vec)[out_idx] =
+            StringVector::AddStringOrBlob(out_vec,
+                                          (const char *)sqlite3_value_blob(val),
+                                          sqlite3_value_bytes(val));
+        break;
       case LogicalTypeId::DECIMAL:
         if (sqlite_column_type != SQLITE_FLOAT &&
             sqlite_column_type != SQLITE_INTEGER) {

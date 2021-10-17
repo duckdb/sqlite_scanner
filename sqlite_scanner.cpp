@@ -58,10 +58,12 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
   check_ok(
       sqlite3_open_v2(file_name.c_str(), &db, SQLITE_OPEN_READONLY, nullptr),
       db);
-  check_ok(sqlite3_prepare_v2(
-               db, string("PRAGMA table_info(" + table_name + ")").c_str(), -1,
-               &res, nullptr),
-           db);
+  check_ok(
+      sqlite3_prepare_v2(
+          db,
+          StringUtil::Format("PRAGMA table_info(\"%s\")", table_name).c_str(),
+          -1, &res, nullptr),
+      db);
 
   vector<bool> not_nulls;
   vector<string> sqlite_types;
@@ -94,8 +96,10 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
     return_types.push_back(cast.cast_type);
   }
   check_ok(sqlite3_prepare_v2(
-               db, string("SELECT MAX(ROWID) FROM " + table_name).c_str(), -1,
-               &res, nullptr),
+               db,
+               StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", table_name)
+                   .c_str(),
+               -1, &res, nullptr),
            db);
   if (sqlite3_step(res) != SQLITE_ROW) {
     throw std::runtime_error("could not find max rowid?");
@@ -133,11 +137,11 @@ static void SqliteInitInternal(ClientContext &context,
       [&](const idx_t column_id) {
         return column_id == COLUMN_IDENTIFIER_ROW_ID
                    ? "ROWID"
-                   : bind_data->names[column_id];
+                   : '"' + bind_data->names[column_id] + '"';
       });
 
   auto sql = StringUtil::Format(
-      "SELECT %s FROM %s WHERE ROWID BETWEEN %d AND %d", col_names,
+      "SELECT %s FROM \"%s\" WHERE ROWID BETWEEN %d AND %d", col_names,
       bind_data->table_name, rowid_min, rowid_max);
 
   check_ok(sqlite3_prepare_v2(local_state->db, sql.c_str(), -1,

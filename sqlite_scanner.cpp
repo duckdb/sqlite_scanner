@@ -60,7 +60,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
       db);
   check_ok(sqlite3_prepare_v2(
                db, string("PRAGMA table_info(" + table_name + ")").c_str(), -1,
-               &res, 0),
+               &res, nullptr),
            db);
 
   vector<bool> not_nulls;
@@ -70,7 +70,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
     auto sqlite_colname = string((const char *)sqlite3_column_text(res, 1));
     auto sqlite_type = string((const char *)sqlite3_column_text(res, 2));
     // Sqlite specialty, untyped columns
-    if (sqlite_type == "") {
+    if (sqlite_type.empty()) {
       sqlite_type = "BLOB";
     }
     auto not_null = sqlite3_column_int(res, 3);
@@ -85,7 +85,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
   // duplicate
   auto cast_string = StringUtil::Join(
       sqlite_types.data(), sqlite_types.size(), ", ",
-      [](const string st) { return StringUtil::Format("?::%s", st); });
+      [](const string &st) { return StringUtil::Format("?::%s", st); });
   auto cast_expressions = Parser::ParseExpressionList(cast_string);
 
   for (auto &e : cast_expressions) {
@@ -95,7 +95,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
   }
   check_ok(sqlite3_prepare_v2(
                db, string("SELECT MAX(ROWID) FROM " + table_name).c_str(), -1,
-               &res, 0),
+               &res, nullptr),
            db);
   if (sqlite3_step(res) != SQLITE_ROW) {
     throw std::runtime_error("could not find max rowid?");
@@ -141,7 +141,7 @@ static void SqliteInitInternal(ClientContext &context,
       bind_data->table_name, rowid_min, rowid_max);
 
   check_ok(sqlite3_prepare_v2(local_state->db, sql.c_str(), -1,
-                              &local_state->res, 0),
+                              &local_state->res, nullptr),
            local_state->db);
 
   local_state->done = false;
@@ -149,7 +149,7 @@ static void SqliteInitInternal(ClientContext &context,
 
 static unique_ptr<FunctionOperatorData>
 SqliteInit(ClientContext &context, const FunctionData *bind_data_p,
-           const vector<column_t> &column_ids, TableFilterCollection *filters) {
+           const vector<column_t> &column_ids, TableFilterCollection *) {
   D_ASSERT(bind_data_p);
   auto bind_data = (SqliteBindData *)bind_data_p;
   bind_data->column_ids = column_ids;
@@ -172,9 +172,9 @@ static idx_t SqliteMaxThreads(ClientContext &context,
 }
 
 static unique_ptr<ParallelState>
-SqliteInitParallelState(ClientContext &context, const FunctionData *bind_data_p,
+SqliteInitParallelState(ClientContext &context, const FunctionData *,
                         const vector<column_t> &column_ids,
-                        TableFilterCollection *filters) {
+                        TableFilterCollection *) {
   auto result = make_unique<SqliteParallelState>();
   result->row_group_index = 0;
   return move(result);
@@ -210,7 +210,7 @@ static unique_ptr<FunctionOperatorData>
 SqliteParallelInit(ClientContext &context, const FunctionData *bind_data_p,
                    ParallelState *parallel_state_p,
                    const vector<column_t> &column_ids,
-                   TableFilterCollection *filters) {
+                   TableFilterCollection *) {
   auto result = make_unique<SqliteOperatorData>();
   auto bind_data = (SqliteBindData *)bind_data_p;
 
@@ -222,7 +222,7 @@ SqliteParallelInit(ClientContext &context, const FunctionData *bind_data_p,
   return move(result);
 }
 
-static void SqliteCleanup(ClientContext &context, const FunctionData *bind_data,
+static void SqliteCleanup(ClientContext &context, const FunctionData *,
                           FunctionOperatorData *operator_state) {
   auto &state = (SqliteOperatorData &)*operator_state;
 
@@ -237,7 +237,7 @@ static void SqliteCleanup(ClientContext &context, const FunctionData *bind_data,
 }
 
 void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
-                FunctionOperatorData *operator_state, DataChunk *input,
+                FunctionOperatorData *operator_state, DataChunk *,
                 DataChunk &output) {
   auto &state = (SqliteOperatorData &)*operator_state;
   auto &bind_data = (SqliteBindData &)*bind_data_p;
@@ -265,7 +265,7 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
     for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
       auto &out_vec = output.data[col_idx];
       auto &mask = FlatVector::Validity(out_vec);
-      auto val = sqlite3_column_value(state.res, col_idx);
+      auto val = sqlite3_column_value(state.res, (int)col_idx);
 
       auto not_null = bind_data.not_nulls[bind_data.column_ids[col_idx]];
       auto sqlite_column_type = sqlite3_value_type(val);
@@ -284,7 +284,8 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
           throw std::runtime_error("Expected integer, got something else");
         }
         // TODO do we need an overflow check here?
-        FlatVector::GetData<int16_t>(out_vec)[out_idx] = sqlite3_value_int(val);
+        FlatVector::GetData<int16_t>(out_vec)[out_idx] =
+            (int16_t)sqlite3_value_int(val);
         break;
 
       case LogicalTypeId::INTEGER:
@@ -376,11 +377,10 @@ static void SqliteFuncParallel(ClientContext &context,
                                const FunctionData *bind_data,
                                FunctionOperatorData *operator_state,
                                DataChunk *input, DataChunk &output,
-                               ParallelState *parallel_state_p) {
+                               ParallelState *) {
   SqliteScan(context, bind_data, operator_state, input, output);
 }
 
-// TODO add remaining types
 // TODO selection pushdown
 // TODO what if table changes between bind and scan? keep transaction?
 

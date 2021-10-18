@@ -20,23 +20,23 @@ struct SqliteBindData : public FunctionData {
   vector<string> names;
   vector<LogicalType> types;
 
-  idx_t max_rowid;
+  idx_t max_rowid = 0;
   vector<column_t> column_ids;
   vector<bool> not_nulls;
-  vector<uint8_t> decimal_multipliers;
+  vector<uint64_t> decimal_multipliers;
 
   idx_t rows_per_group = 100000;
 };
 
 struct SqliteOperatorData : public FunctionOperatorData {
-  sqlite3 *db;
-  sqlite3_stmt *res;
-  bool done;
+  sqlite3 *db = nullptr;
+  sqlite3_stmt *res = nullptr;
+  bool done = false;
 };
 
 struct SqliteParallelState : public ParallelState {
   mutex lock;
-  idx_t row_group_index;
+  idx_t row_group_index = 0;
 };
 
 static void check_ok(int rc, sqlite3 *db) {
@@ -78,6 +78,9 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
     if (sqlite_type.empty()) {
       sqlite_type = "BLOB";
     }
+    if (sqlite_type == "BLOB SUB_TYPE TEXT") {
+        sqlite_type = "STRING"; // grr
+    }
     auto not_null = sqlite3_column_int(res, 3);
 
     names.push_back(sqlite_colname);
@@ -105,9 +108,9 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
 
     // precompute decimal conversion multipliers
     if (cast.cast_type.id() == LogicalTypeId::DECIMAL) {
-      uint8_t width, scale;
+      uint8_t width = 0, scale = 0;
       cast.cast_type.GetDecimalProperties(width, scale);
-      result->decimal_multipliers[column_index] = pow(10, scale);
+      result->decimal_multipliers[column_index] = (uint64_t)pow(10, scale);
     }
     column_index++;
   }
@@ -139,7 +142,7 @@ static void SqliteInitInternal(ClientContext &context,
                                idx_t rowid_max) {
   D_ASSERT(bind_data);
   D_ASSERT(local_state);
-  D_ASSERT(rowid_min < rowid_max);
+  D_ASSERT(rowid_min <= rowid_max);
 
   check_ok(sqlite3_open_v2(bind_data->file_name.c_str(), &local_state->db,
                            SQLITE_OPEN_READONLY, nullptr),
@@ -300,7 +303,7 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
           throw std::runtime_error("Expected integer, got something else");
         }
         auto raw_int = sqlite3_value_int(val);
-        if (raw_int > NumericLimits<int16_t>().Maximum()) {
+        if (raw_int > NumericLimits<int16_t>::Maximum()) {
           throw std::runtime_error("int16 value out of range");
         }
         FlatVector::GetData<int16_t>(out_vec)[out_idx] = (int16_t)raw_int;
@@ -373,16 +376,16 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
             bind_data.decimal_multipliers[bind_data.column_ids[col_idx]];
         switch (out_vec.GetType().InternalType()) {
         case PhysicalType::INT16:
-          FlatVector::GetData<int16_t>(out_vec)[out_idx] =
-              sqlite3_value_double(val) * multiplier;
+          FlatVector::GetData<int16_t>(out_vec)[out_idx] = round(
+              sqlite3_value_double(val) * multiplier);
           break;
         case PhysicalType::INT32:
           FlatVector::GetData<int32_t>(out_vec)[out_idx] =
-              sqlite3_value_double(val) * multiplier;
+              round(sqlite3_value_double(val) * multiplier);
           break;
         case PhysicalType::INT64:
           FlatVector::GetData<int64_t>(out_vec)[out_idx] =
-              sqlite3_value_double(val) * multiplier;
+              round(sqlite3_value_double(val) * multiplier);
           break;
 
         default:
@@ -412,13 +415,13 @@ static string SqliteTotString(const FunctionData *bind_data_p) {
   return StringUtil::Format("%s:%s", bind_data.file_name, bind_data.table_name);
 }
 
-// TODO this crashes DuckDB ^^
+
 // static unique_ptr<BaseStatistics> SqliteStatistics(ClientContext &context,
 // const FunctionData *bind_data_p,
 //                                                         column_t
 //                                                         column_index) {
 //    auto &bind_data = (SqliteBindData &)*bind_data_p;
-//    auto stats = make_unique<BaseStatistics>(bind_data.types[column_index]);
+//    auto stats = BaseStatistics::CreateEmpty(bind_data.types[column_index]);
 //    stats->validity_stats =
 //    make_unique<ValidityStatistics>(!bind_data.not_nulls[column_index]);
 //    return stats;
@@ -429,7 +432,7 @@ public:
   SqliteScanFunction()
       : TableFunction("sqlite_scan",
                       {LogicalType::VARCHAR, LogicalType::VARCHAR}, SqliteScan,
-                      SqliteBind, SqliteInit, /*statistics */ nullptr,
+                      SqliteBind, SqliteInit, nullptr,
                       SqliteCleanup,
                       /* dependency */ nullptr, SqliteCardinality,
                       /* pushdown_complex_filter */ nullptr, SqliteTotString,

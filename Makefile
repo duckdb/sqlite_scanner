@@ -8,11 +8,11 @@ clean:
 
 duckdb_debug:
 	cd duckdb && \
-	DISABLE_SANITIZER=1 BUILD_TPCH=1 make debug
+	BUILD_TPCH=1 make debug
 
 duckdb_release:
 	cd duckdb && \
-	DISABLE_SANITIZER=1 BUILD_TPCH=1 make
+	BUILD_TPCH=1 make release
 
 debug: duckdb_debug
 	mkdir -p build/debug && \

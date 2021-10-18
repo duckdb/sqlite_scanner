@@ -16,14 +16,16 @@ using namespace duckdb;
 struct SqliteBindData : public FunctionData {
   string file_name;
   string table_name;
-  idx_t max_rowid;
-  vector<column_t> column_ids;
-  vector<bool> not_nulls;
+
   vector<string> names;
   vector<LogicalType> types;
 
-  idx_t rows_per_group =
-      1000000; // TODO this should be a parameter to the scan function
+  idx_t max_rowid;
+  vector<column_t> column_ids;
+  vector<bool> not_nulls;
+  vector<uint8_t> decimal_multipliers;
+
+  idx_t rows_per_group = 100000;
 };
 
 struct SqliteOperatorData : public FunctionOperatorData {
@@ -50,20 +52,21 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
            vector<string> &input_table_names, vector<LogicalType> &return_types,
            vector<string> &names) {
 
-  auto file_name = inputs[0].GetValue<string>();
-  auto table_name = inputs[1].GetValue<string>();
+  auto result = make_unique<SqliteBindData>();
+  result->file_name = inputs[0].GetValue<string>();
+  result->table_name = inputs[1].GetValue<string>();
 
   sqlite3 *db;
   sqlite3_stmt *res;
-  check_ok(
-      sqlite3_open_v2(file_name.c_str(), &db, SQLITE_OPEN_READONLY, nullptr),
-      db);
-  check_ok(
-      sqlite3_prepare_v2(
-          db,
-          StringUtil::Format("PRAGMA table_info(\"%s\")", table_name).c_str(),
-          -1, &res, nullptr),
-      db);
+  check_ok(sqlite3_open_v2(result->file_name.c_str(), &db, SQLITE_OPEN_READONLY,
+                           nullptr),
+           db);
+  check_ok(sqlite3_prepare_v2(db,
+                              StringUtil::Format("PRAGMA table_info(\"%s\")",
+                                                 result->table_name)
+                                  .c_str(),
+                              -1, &res, nullptr),
+           db);
 
   vector<bool> not_nulls;
   vector<string> sqlite_types;
@@ -78,10 +81,13 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
     auto not_null = sqlite3_column_int(res, 3);
 
     names.push_back(sqlite_colname);
-    not_nulls.push_back((bool)not_null);
+    result->not_nulls.push_back((bool)not_null);
     sqlite_types.push_back(sqlite_type);
   }
   sqlite3_reset(res);
+  if (names.empty()) {
+    throw std::runtime_error("no columns for table " + result->table_name);
+  }
 
   // we use the duckdb/postgres parser to parse these types, no need to
   // duplicate
@@ -90,30 +96,37 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
       [](const string &st) { return StringUtil::Format("?::%s", st); });
   auto cast_expressions = Parser::ParseExpressionList(cast_string);
 
+  result->decimal_multipliers.resize(names.size());
+  idx_t column_index = 0;
   for (auto &e : cast_expressions) {
     D_ASSERT(e->type == ExpressionType::OPERATOR_CAST);
     auto &cast = (CastExpression &)*e;
     return_types.push_back(cast.cast_type);
+
+    // precompute decimal conversion multipliers
+    if (cast.cast_type.id() == LogicalTypeId::DECIMAL) {
+      uint8_t width, scale;
+      cast.cast_type.GetDecimalProperties(width, scale);
+      result->decimal_multipliers[column_index] = pow(10, scale);
+    }
+    column_index++;
   }
-  check_ok(sqlite3_prepare_v2(
-               db,
-               StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", table_name)
-                   .c_str(),
-               -1, &res, nullptr),
-           db);
+
+  check_ok(
+      sqlite3_prepare_v2(db,
+                         StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"",
+                                            result->table_name)
+                             .c_str(),
+                         -1, &res, nullptr),
+      db);
   if (sqlite3_step(res) != SQLITE_ROW) {
     throw std::runtime_error("could not find max rowid?");
   }
-  idx_t max_rowid = sqlite3_column_int64(res, 0);
+  result->max_rowid = sqlite3_column_int64(res, 0);
 
   sqlite3_reset(res);
   sqlite3_close(db);
 
-  auto result = make_unique<SqliteBindData>();
-  result->not_nulls = not_nulls;
-  result->file_name = file_name;
-  result->table_name = table_name;
-  result->max_rowid = max_rowid;
   result->names = names;
   result->types = return_types;
 
@@ -157,7 +170,6 @@ SqliteInit(ClientContext &context, const FunctionData *bind_data_p,
   D_ASSERT(bind_data_p);
   auto bind_data = (SqliteBindData *)bind_data_p;
   bind_data->column_ids = column_ids;
-  // TODO deal with filters
   auto result = make_unique<SqliteOperatorData>();
   SqliteInitInternal(context, bind_data, result.get(), 0, bind_data->max_rowid);
   return move(result);
@@ -283,21 +295,22 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
       }
 
       switch (out_vec.GetType().id()) {
-      case LogicalTypeId::SMALLINT:
+      case LogicalTypeId::SMALLINT: {
         if (sqlite_column_type != SQLITE_INTEGER) {
           throw std::runtime_error("Expected integer, got something else");
         }
-        // TODO do we need an overflow check here?
-        FlatVector::GetData<int16_t>(out_vec)[out_idx] =
-            (int16_t)sqlite3_value_int(val);
+        auto raw_int = sqlite3_value_int(val);
+        if (raw_int > NumericLimits<int16_t>().Maximum()) {
+          throw std::runtime_error("int16 value out of range");
+        }
+        FlatVector::GetData<int16_t>(out_vec)[out_idx] = (int16_t)raw_int;
         break;
+      }
 
       case LogicalTypeId::INTEGER:
         if (sqlite_column_type != SQLITE_INTEGER) {
           throw std::runtime_error("Expected integer, got something else");
         }
-        // TODO do we need an overflow check here?
-
         FlatVector::GetData<int32_t>(out_vec)[out_idx] = sqlite3_value_int(val);
         break;
 
@@ -350,17 +363,26 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
                                           (const char *)sqlite3_value_blob(val),
                                           sqlite3_value_bytes(val));
         break;
-      case LogicalTypeId::DECIMAL:
+      case LogicalTypeId::DECIMAL: {
         if (sqlite_column_type != SQLITE_FLOAT &&
             sqlite_column_type != SQLITE_INTEGER) {
           throw std::runtime_error(
               "Expected float or integer, got something else");
         }
+        auto &multiplier =
+            bind_data.decimal_multipliers[bind_data.column_ids[col_idx]];
         switch (out_vec.GetType().InternalType()) {
+        case PhysicalType::INT16:
+          FlatVector::GetData<int16_t>(out_vec)[out_idx] =
+              sqlite3_value_double(val) * multiplier;
+          break;
+        case PhysicalType::INT32:
+          FlatVector::GetData<int32_t>(out_vec)[out_idx] =
+              sqlite3_value_double(val) * multiplier;
+          break;
         case PhysicalType::INT64:
-          // TODO this * 100 of course depends on the DECIMAL type
           FlatVector::GetData<int64_t>(out_vec)[out_idx] =
-              sqlite3_value_double(val) * 100;
+              sqlite3_value_double(val) * multiplier;
           break;
 
         default:
@@ -368,7 +390,7 @@ void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
               TypeIdToString(out_vec.GetType().InternalType()));
         }
         break;
-
+      }
       default:
         throw std::runtime_error(out_vec.GetType().ToString());
       }
@@ -385,20 +407,17 @@ static void SqliteFuncParallel(ClientContext &context,
   SqliteScan(context, bind_data, operator_state, input, output);
 }
 
-// TODO selection pushdown
-// TODO what if table changes between bind and scan? keep transaction?
-
 static string SqliteTotString(const FunctionData *bind_data_p) {
   auto &bind_data = (SqliteBindData &)*bind_data_p;
   return StringUtil::Format("%s:%s", bind_data.file_name, bind_data.table_name);
 }
-//
+
+// TODO this crashes DuckDB ^^
 // static unique_ptr<BaseStatistics> SqliteStatistics(ClientContext &context,
 // const FunctionData *bind_data_p,
 //                                                         column_t
 //                                                         column_index) {
 //    auto &bind_data = (SqliteBindData &)*bind_data_p;
-//    // TODO this does not seem to work, only declaring NULLness
 //    auto stats = make_unique<BaseStatistics>(bind_data.types[column_index]);
 //    stats->validity_stats =
 //    make_unique<ValidityStatistics>(!bind_data.not_nulls[column_index]);

@@ -5,8 +5,11 @@
 statement ok
 LOAD 'build/release/sqlite_scanner.duckdb_extension';
 
+statement ok
+CALL sqlite_attach('chinook.db');
+
 query III
-SELECT * FROM sqlite_scan('chinook.db', 'albums') LIMIT 10;
+SELECT * FROM albums LIMIT 10;
 ----
 1	For Those About To Rock We Salute You	1
 2	Balls to the Wall	2
@@ -20,7 +23,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'albums') LIMIT 10;
 10	Audioslave	8
 
 query II
-SELECT * FROM sqlite_scan('chinook.db', 'artists') LIMIT 10;
+SELECT * FROM artists LIMIT 10;
 ----
 1	AC/DC
 2	Accept
@@ -34,7 +37,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'artists') LIMIT 10;
 10	Billy Cobham
 
 query IIIIIIIIIIIII
-SELECT * FROM sqlite_scan('chinook.db', 'customers') LIMIT 10;
+SELECT * FROM customers LIMIT 10;
 ----
 1	Luís	Gonçalves	Embraer - Empresa Brasileira de Aeronáutica S.A.	Av. Brigadeiro Faria Lima, 2170	São José dos Campos	SP	Brazil	12227-000	+55 (12) 3923-5555	+55 (12) 3923-5566	luisg@embraer.com.br	3
 2	Leonie	Köhler	NULL	Theodor-Heuss-Straße 34	Stuttgart	NULL	Germany	70174	+49 0711 2842222	NULL	leonekohler@surfeu.de	5
@@ -48,7 +51,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'customers') LIMIT 10;
 10	Eduardo	Martins	Woodstock Discos	Rua Dr. Falcão Filho, 155	São Paulo	SP	Brazil	01007-010	+55 (11) 3033-5446	+55 (11) 3033-4564	eduardo@woodstock.com.br	4
 
 query IIIIIIIIIIIIIII
-SELECT * FROM sqlite_scan('chinook.db', 'employees') LIMIT 10;
+SELECT * FROM employees LIMIT 10;
 ----
 1	Adams	Andrew	General Manager	NULL	1962-02-18 00:00:00	2002-08-14 00:00:00	11120 Jasper Ave NW	Edmonton	AB	Canada	T5K 2N1	+1 (780) 428-9482	+1 (780) 428-3457	andrew@chinookcorp.com
 2	Edwards	Nancy	Sales Manager	1	1958-12-08 00:00:00	2002-05-01 00:00:00	825 8 Ave SW	Calgary	AB	Canada	T2P 2T3	+1 (403) 262-3443	+1 (403) 262-3322	nancy@chinookcorp.com
@@ -60,7 +63,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'employees') LIMIT 10;
 8	Callahan	Laura	IT Staff	6	1968-01-09 00:00:00	2004-03-04 00:00:00	923 7 ST NW	Lethbridge	AB	Canada	T1H 1Y8	+1 (403) 467-3351	+1 (403) 467-8772	laura@chinookcorp.com
 
 query II
-SELECT * FROM sqlite_scan('chinook.db', 'genres') LIMIT 10;
+SELECT * FROM genres LIMIT 10;
 ----
 1	Rock
 2	Jazz
@@ -74,7 +77,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'genres') LIMIT 10;
 10	Soundtrack
 
 query IIIIIIIII
-SELECT * FROM sqlite_scan('chinook.db', 'invoices') LIMIT 10;
+SELECT * FROM invoices LIMIT 10;
 ----
 1	2	2009-01-01 00:00:00	Theodor-Heuss-Straße 34	Stuttgart	NULL	Germany	70174	1.98
 2	4	2009-01-02 00:00:00	Ullevålsveien 14	Oslo	NULL	Norway	0171	3.96
@@ -88,7 +91,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'invoices') LIMIT 10;
 10	46	2009-02-03 00:00:00	3 Chatham Street	Dublin	Dublin	Ireland	NULL	5.94
 
 query IIIII
-SELECT * FROM sqlite_scan('chinook.db', 'invoice_items') LIMIT 10;
+SELECT * FROM invoice_items LIMIT 10;
 ----
 1	1	2	0.99	1
 2	1	4	0.99	1
@@ -102,7 +105,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'invoice_items') LIMIT 10;
 10	3	28	0.99	1
 
 query II
-SELECT * FROM sqlite_scan('chinook.db', 'media_types') LIMIT 10;
+SELECT * FROM media_types LIMIT 10;
 ----
 1	MPEG audio file
 2	Protected AAC audio file
@@ -111,7 +114,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'media_types') LIMIT 10;
 5	AAC audio file
 
 query II
-SELECT * FROM sqlite_scan('chinook.db', 'playlists') LIMIT 10;
+SELECT * FROM playlists LIMIT 10;
 ----
 1	Music
 2	Movies
@@ -126,7 +129,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'playlists') LIMIT 10;
 
 
 query II
-SELECT * FROM sqlite_scan('chinook.db', 'playlist_track') LIMIT 10;
+SELECT * FROM playlist_track LIMIT 10;
 ----
 1	3402
 1	3389
@@ -140,7 +143,7 @@ SELECT * FROM sqlite_scan('chinook.db', 'playlist_track') LIMIT 10;
 1	3397
 
 query IIIIIIIII
-SELECT * FROM sqlite_scan('chinook.db', 'tracks') LIMIT 10;
+SELECT * FROM tracks LIMIT 10;
 ----
 1	For Those About To Rock (We Salute You)	1	1	1	Angus Young, Malcolm Young, Brian Johnson	343719	11170334	0.99
 2	Balls to the Wall	2	2	1	NULL	342562	5510424	0.99

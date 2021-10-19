@@ -14,8 +14,16 @@
 #include "duckdb/parser/parsed_data/create_view_info.hpp"
 #include "duckdb/planner/binder.hpp"
 #include "duckdb/parser/query_node/select_node.hpp"
+#include "duckdb/parser/expression/star_expression.hpp"
+#include "duckdb/parser/tableref/table_function_ref.hpp"
+#include "duckdb/parser/expression/function_expression.hpp"
+#include "duckdb/parser/expression/constant_expression.hpp"
+#include "duckdb/parser/statement/create_statement.hpp"
 
 using namespace duckdb;
+
+static int SQLITE_OPEN_FLAGS =
+    SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_PRIVATECACHE;
 
 struct SqliteBindData : public FunctionData {
   string file_name;
@@ -36,6 +44,13 @@ struct SqliteOperatorData : public FunctionOperatorData {
   sqlite3_stmt *res = nullptr;
   bool done = false;
   vector<column_t> column_ids;
+
+  ~SqliteOperatorData() {
+    sqlite3_finalize(res);
+    sqlite3_close(db);
+    res = nullptr;
+    db = nullptr;
+  }
 };
 
 struct SqliteParallelState : public ParallelState {
@@ -62,7 +77,7 @@ SqliteBind(ClientContext &context, vector<Value> &inputs,
 
   sqlite3 *db;
   sqlite3_stmt *res;
-  check_ok(sqlite3_open_v2(result->file_name.c_str(), &db, SQLITE_OPEN_READONLY,
+  check_ok(sqlite3_open_v2(result->file_name.c_str(), &db, SQLITE_OPEN_FLAGS,
                            nullptr),
            db);
   check_ok(sqlite3_prepare_v2(db,
@@ -152,7 +167,7 @@ static void SqliteInitInternal(ClientContext &context,
   local_state->done = false;
 
   check_ok(sqlite3_open_v2(bind_data->file_name.c_str(), &local_state->db,
-                           SQLITE_OPEN_READONLY, nullptr),
+                           SQLITE_OPEN_FLAGS, nullptr),
            local_state->db);
 
   auto col_names = StringUtil::Join(
@@ -244,22 +259,9 @@ SqliteParallelInit(ClientContext &context, const FunctionData *bind_data_p,
   result->column_ids = column_ids;
   if (!SqliteParallelStateNext(context, bind_data_p, result.get(),
                                parallel_state_p)) {
-    return nullptr;
+    result->done = true;
   }
   return move(result);
-}
-
-static void SqliteCleanup(ClientContext &context, const FunctionData *,
-                          FunctionOperatorData *operator_state) {
-  auto &state = (SqliteOperatorData &)*operator_state;
-  if (!state.db) {
-    return;
-  }
-  check_ok(sqlite3_finalize(state.res), state.db);
-  check_ok(sqlite3_close(state.db), state.db);
-  state.db = nullptr;
-  state.res = nullptr;
-  state.done = true;
 }
 
 void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
@@ -419,24 +421,25 @@ static string SqliteToString(const FunctionData *bind_data_p) {
   return StringUtil::Format("%s:%s", bind_data->file_name,
                             bind_data->table_name);
 }
-//
-// static unique_ptr<BaseStatistics> SqliteStatistics(ClientContext &context,
-// const FunctionData *bind_data_p,
-//                                                         column_t
-//                                                         column_index) {
-//    auto &bind_data = (SqliteBindData &)*bind_data_p;
-//    auto stats = BaseStatistics::CreateEmpty(bind_data.types[column_index]);
-//    stats->validity_stats =
-//    make_unique<ValidityStatistics>(!bind_data.not_nulls[column_index]);
-//    return stats;
-//}
+
+/*
+static unique_ptr<BaseStatistics>
+SqliteStatistics(ClientContext &context, const FunctionData *bind_data_p,
+                 column_t column_index) {
+  auto &bind_data = (SqliteBindData &)*bind_data_p;
+  auto stats = BaseStatistics::CreateEmpty(bind_data.types[column_index]);
+  stats->validity_stats =
+      make_unique<ValidityStatistics>(!bind_data.not_nulls[column_index]);
+  return stats;
+}
+*/
 
 class SqliteScanFunction : public TableFunction {
 public:
   SqliteScanFunction()
       : TableFunction("sqlite_scan",
                       {LogicalType::VARCHAR, LogicalType::VARCHAR}, SqliteScan,
-                      SqliteBind, SqliteInit, nullptr, SqliteCleanup,
+                      SqliteBind, SqliteInit, nullptr, nullptr,
                       /* dependency */ nullptr, SqliteCardinality,
                       /* pushdown_complex_filter */ nullptr, SqliteToString,
                       SqliteMaxThreads, SqliteInitParallelState, nullptr,
@@ -466,8 +469,6 @@ AttachBind(ClientContext &context, vector<Value> &inputs,
   for (auto &kv : named_parameters) {
     if (kv.first == "schema") {
       result->schema = kv.second.str_value;
-    } else if (kv.first == "suffix") {
-      result->suffix = kv.second.str_value;
     } else if (kv.first == "overwrite") {
       result->overwrite = kv.second.value_.boolean;
     }
@@ -489,41 +490,77 @@ static void AttachFunction(ClientContext &context,
 
   sqlite3 *db;
   sqlite3_stmt *res;
-  check_ok(sqlite3_open_v2(data.file_name.c_str(), &db, SQLITE_OPEN_READONLY,
-                           nullptr),
-           db);
-  check_ok(sqlite3_prepare_v2(
-               db, "SELECT tbl_name FROM sqlite_master WHERE type='table'", -1,
-               &res, nullptr),
-           db);
-
-  while (sqlite3_step(res) == SQLITE_ROW) {
-    auto table_name = string((const char *)sqlite3_column_text(res, 0));
+  check_ok(
+      sqlite3_open_v2(data.file_name.c_str(), &db, SQLITE_OPEN_FLAGS, nullptr),
+      db);
+  {
+    // create a template create view info that is filled in in the loop below
     CreateViewInfo view_info;
     view_info.schema = data.schema;
-    view_info.view_name = table_name;
     view_info.temporary = true;
     view_info.on_conflict = data.overwrite
                                 ? OnCreateConflict::REPLACE_ON_CONFLICT
                                 : OnCreateConflict::ERROR_ON_CONFLICT;
 
-    auto view_query = StringUtil::Format(
-        "SELECT * FROM sqlite_scan('%s', '%s')", data.file_name, table_name);
+    vector<unique_ptr<ParsedExpression>> parameters;
+    parameters.push_back(
+        make_unique<ConstantExpression>(Value(data.file_name)));
+    parameters.push_back(make_unique<ConstantExpression>(Value()));
+    auto *table_name_ptr = (ConstantExpression *)parameters.back().get();
+    auto table_function = make_unique<TableFunctionRef>();
+    table_function->function =
+        make_unique<FunctionExpression>("sqlite_scan", move(parameters));
 
-    Parser parser;
-    parser.ParseQuery(view_query);
+    auto select_node = make_unique<SelectNode>();
+    select_node->select_list.push_back(make_unique<StarExpression>());
+    select_node->from_table = move(table_function);
 
-    auto &statement = parser.statements[0];
-    view_info.query = unique_ptr<SelectStatement>(
-        (SelectStatement *)statement->Copy().release());
+    view_info.query = make_unique<SelectStatement>();
+    view_info.query->node = move(select_node);
 
-    auto binder = Binder::CreateBinder(context);
-    auto bound_statement = binder->Bind(*statement);
-    view_info.types = bound_statement.types;
+    check_ok(sqlite3_prepare_v2(
+                 db, "SELECT name FROM sqlite_master WHERE type='table'", -1,
+                 &res, nullptr),
+             db);
 
-    context.db->GetCatalog().CreateView(context, &view_info);
+    while (sqlite3_step(res) == SQLITE_ROW) {
+      auto table_name = string((const char *)sqlite3_column_text(res, 0));
+
+      view_info.view_name = table_name;
+      table_name_ptr->value = Value(table_name);
+      // CREATE VIEW AS SELECT * FROM sqlite_scan()
+      auto binder = Binder::CreateBinder(context);
+      auto bound_statement = binder->Bind(*view_info.query->Copy());
+      view_info.types = bound_statement.types;
+      auto view_info_copy = view_info.Copy();
+      context.db->GetCatalog().CreateView(
+          context, (CreateViewInfo *)view_info_copy.get());
+    }
+    check_ok(sqlite3_finalize(res), db);
   }
-  check_ok(sqlite3_finalize(res), db);
+  {
+    check_ok(sqlite3_prepare_v2(
+                 db, "SELECT sql FROM sqlite_master WHERE type='view'", -1,
+                 &res, nullptr),
+             db);
+
+    while (sqlite3_step(res) == SQLITE_ROW) {
+      auto view_sql = string((const char *)sqlite3_column_text(res, 0));
+      Parser p;
+      // TODO what if we can't parse that thing
+      p.ParseQuery(view_sql);
+      D_ASSERT(p.statements[0]->type == StatementType::CREATE_STATEMENT);
+      auto &create_view_statement = (CreateStatement &)*p.statements[0];
+      D_ASSERT(create_view_statement.info->type == CatalogType::VIEW_ENTRY);
+      auto view_info = (CreateViewInfo *)create_view_statement.info.get();
+      view_info->schema = data.schema;
+      auto binder = Binder::CreateBinder(context);
+      auto bound_statement = binder->Bind(*view_info->query->Copy());
+      view_info->types = bound_statement.types;
+      context.db->GetCatalog().CreateView(context, view_info);
+    }
+    check_ok(sqlite3_finalize(res), db);
+  }
   check_ok(sqlite3_close(db), db);
   data.finished = true;
 }

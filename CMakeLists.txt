@@ -23,7 +23,7 @@ endif()
 
 include_directories(duckdb/src/include)
 include_directories(sqlite/)
-link_directories(duckdb/build/debug/src)
+link_directories(duckdb/build/release/src)
 
 add_compile_options(-Wall -Werror -pedantic)
 

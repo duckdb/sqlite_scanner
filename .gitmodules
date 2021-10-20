@@ -1,3 +1,0 @@
-[submodule "duckdb"]
-	path = duckdb
-	url = https://github.com/sqlite/duckdb

@@ -26,7 +26,9 @@ jobs:
         fetch-depth: 0
 
     - name: Update DuckDB submodule
-      run:  git submodule update --remote --merge
+      run: |
+        git submodule init
+        git submodule update --remote --merge
 
     - name: Build
       run: make release

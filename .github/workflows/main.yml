@@ -13,7 +13,7 @@ jobs:
     steps:
 
     - name: Install
-      run: yum install -y gcc gcc-c++ cmake make
+      run: yum install -y gcc gcc-c++ cmake make python3
 
     - name: Install recent git yay
       run: |

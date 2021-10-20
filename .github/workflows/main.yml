@@ -12,7 +12,6 @@ jobs:
 
     steps:
 
-
     - name: Install
       run: yum install -y gcc gcc-c++ cmake make
 
@@ -20,6 +19,12 @@ jobs:
       run: |
         yum -y install https://packages.endpoint.com/rhel/7/os/x86_64/endpoint-repo-1.9-1.x86_64.rpm
         yum install -y git
+
+    - name Install AWS client
+      run: |
+        curl -O https://bootstrap.pypa.io/get-pip.py
+        python3 get-pip.py --user
+        python3 -m pip install awscli --upgrade --user
 
     - uses: actions/checkout@v2
       with:

@@ -12,8 +12,14 @@ jobs:
 
     steps:
 
+
     - name: Install
-      run: yum install -y gcc gcc-c++ git cmake make
+      run: yum install -y gcc gcc-c++ cmake make
+
+    - name: Install recent git yay
+      run: |
+        yum -y install https://packages.endpoint.com/rhel/7/os/x86_64/endpoint-repo-1.9-1.x86_64.rpm
+        yum install -y git
 
     - uses: actions/checkout@v2
       with:

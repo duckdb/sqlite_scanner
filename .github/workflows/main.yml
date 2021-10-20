@@ -33,6 +33,11 @@ jobs:
     - name: Build
       run: make release
 
+    - name: Make tpch test database
+      run: |
+        ./duckdb/build/release/duckdb < tpch-export.duckdb
+        sqlite3 tpch.db < tpch-create.sqlite
+
     - name: Test
       run: ./duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
 

@@ -11,12 +11,13 @@ jobs:
     container: centos:7
 
     steps:
-    - uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
 
     - name: Install
       run: yum install -y gcc gcc-c++ git cmake make
+
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
 
     - name: Update DuckDB submodule
       run:  git submodule update --remote --merge

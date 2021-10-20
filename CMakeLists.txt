@@ -4,6 +4,10 @@ if(POLICY CMP0026)
   cmake_policy(SET CMP0026 NEW)
 endif()
 
+if(POLICY CMP0015)
+  cmake_policy(SET CMP0015 NEW)
+endif()
+
 if(POLICY CMP0042)
   cmake_policy(SET CMP0042 NEW)
 endif()
@@ -12,11 +16,11 @@ if(POLICY CMP0051)
   cmake_policy(SET CMP0051 NEW)
 endif()
 
-if (CMAKE_VERSION VERSION_LESS "3.1")
-  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-else ()
-  set (CMAKE_CXX_STANDARD 11)
-endif ()
+if(CMAKE_VERSION VERSION_LESS "3.1")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+else()
+  set(CMAKE_CXX_STANDARD 11)
+endif()
 
 project(sqlite_scanner)
 

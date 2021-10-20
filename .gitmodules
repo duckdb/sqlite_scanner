@@ -1,0 +1,4 @@
+[submodule "duckdb"]
+	path = duckdb
+	url = https://github.com/hannesmuehleisen/duckdb
+	branch = nonstandardtestdir

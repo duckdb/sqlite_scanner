@@ -1,0 +1,9 @@
+statement ok
+LOAD 'build/release/sqlite_scanner.duckdb_extension';
+
+statement ok
+CALL sqlite_attach('borked.db');
+
+# this has a string in an integer column
+statement error
+select * from a;

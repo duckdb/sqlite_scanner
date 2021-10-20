@@ -1,7 +1,3 @@
-# name: test/lineitem.test
-# description: test sqlite scanner on lineitem table
-# group: [sqlite_scanner]
-
 statement ok
 LOAD 'build/release/sqlite_scanner.duckdb_extension';
 

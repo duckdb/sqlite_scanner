@@ -22,11 +22,11 @@ debug: duckdb_debug
 release: duckdb_release
 	mkdir -p build/release && \
 	cd build/release && \
-	cmake  -DCMAKE_BUILD_TYPE=Release ../.. && \
+	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. && \
 	cmake --build .
 
 test: release
-	./duckdb/build/release/duckdb < test.sql
+	../duckdb/build/debug/test/unittest --test-dir . "[lite_scanner]"
 
 format:
 	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp

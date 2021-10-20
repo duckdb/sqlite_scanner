@@ -68,11 +68,11 @@ CREATE TABLE LINEITEM ( L_ORDERKEY    INTEGER NOT NULL,
                              L_COMMENT      VARCHAR(44) NOT NULL);
 
 .headers off
-.import nation.tbl nation --csv
-.import region.tbl region --csv
-.import part.tbl part --csv
-.import supplier.tbl supplier --csv
-.import partsupp.tbl partsupp --csv
-.import customer.tbl customer --csv
-.import orders.tbl orders --csv
-.import lineitem.tbl lineitem --csv
+.import /tmp/nation.tbl nation --csv
+.import /tmp/region.tbl region --csv
+.import /tmp/part.tbl part --csv
+.import /tmp/supplier.tbl supplier --csv
+.import /tmp/partsupp.tbl partsupp --csv
+.import /tmp/customer.tbl customer --csv
+.import /tmp/orders.tbl orders --csv
+.import /tmp/lineitem.tbl lineitem --csv

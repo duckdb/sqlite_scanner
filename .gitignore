@@ -3,3 +3,4 @@
 build
 cmake-build-debug
 sqlite/build
+tpch.db

@@ -1,0 +1,37 @@
+on: [push, pull_request]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+
+ build:
+    name: CentOS 7
+    runs-on: ubuntu-latest
+    container: centos:7
+    needs: linux-debug
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Install
+      run: yum install -y gcc gcc-c++ git cmake make
+
+    - name: Update DuckDB submodule
+      run:  git submodule update --remote --merge
+
+    - name: Build
+      run: make release
+
+    - name: Test
+      run: ./duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: sqlite-scanner
+        path: |
+          build/release/sqlite_scanner.duckdb_extension
+          

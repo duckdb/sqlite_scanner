@@ -1,0 +1,11 @@
+statement ok
+LOAD 'build/release/sqlite_scanner.duckdb_extension';
+
+statement ok
+CALL sqlite_attach('decimal.db');
+
+query IIIII
+select * from a;
+----
+NULL	NULL	NULL	NULL	NULL
+1	0.1	1.2	123.45	12345678.90000

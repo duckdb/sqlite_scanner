@@ -1,4 +1,5 @@
 LOAD 'build/release/sqlite_scanner.duckdb_extension';
+CALL sqlite_attach('lineitem-sf10.db');
 
 select
   l_returnflag,
@@ -12,8 +13,7 @@ select
   avg(l_discount) as avg_disc,
   count(*) as count_order
 from
---lineitem
-  sqlite_scan('lineitem-sf10.db', 'lineitem')
+  lineitem
 where
   l_shipdate <= '1998-09-02'
 group by

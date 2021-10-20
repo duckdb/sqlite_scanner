@@ -12,7 +12,7 @@ if(POLICY CMP0051)
   cmake_policy(SET CMP0051 NEW)
 endif()
 
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 
 project(sqlite_scanner)
 
@@ -23,29 +23,34 @@ endif()
 
 include_directories(duckdb/src/include)
 include_directories(sqlite/)
-link_directories(duckdb/build/release/src)
-
-add_compile_options(-Wall -Werror -pedantic)
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+  add_compile_options(-Wall -Werror -pedantic -fsanitize=address)
+  link_directories(duckdb/build/debug/src)
+else()
+  link_directories(duckdb/build/release/src)
+endif()
 
 add_library(sqlite_scanner SHARED sqlite_scanner.cpp sqlite/sqlite3.c)
 set_target_properties(sqlite_scanner PROPERTIES PREFIX "")
 target_link_libraries(sqlite_scanner duckdb)
 
-set_target_properties(sqlite_scanner PROPERTIES SUFFIX
-                                                         ".duckdb_extension")
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+  target_link_libraries(sqlite_scanner -fsanitize=address)
+endif()
+
+set_target_properties(sqlite_scanner PROPERTIES SUFFIX ".duckdb_extension")
 
 if(MSVC)
-  set_target_properties(
-    sqlite_scanner PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG
-                                       ${CMAKE_BINARY_DIR})
+  set_target_properties(sqlite_scanner PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG
+                                                  ${CMAKE_BINARY_DIR})
   set_target_properties(
     sqlite_scanner PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE
-                                       ${CMAKE_BINARY_DIR})
+                              ${CMAKE_BINARY_DIR})
 endif()
 
 if(WIN32)
-  set_target_properties(sqlite_scanner
-                        PROPERTIES LINK_FLAGS_RELEASE "/DELAYLOAD:duckdb.dll")
+  set_target_properties(sqlite_scanner PROPERTIES LINK_FLAGS_RELEASE
+                                                  "/DELAYLOAD:duckdb.dll")
   set(CMAKE_EXE_LINKER_FLAGS_RELEASE
       "${CMAKE_EXE_LINKER_FLAGS_RELEASE}  /DELAYLOAD:duckdb.dll")
 endif()

@@ -1,10 +1,9 @@
 .PHONY: all clean format debug release duckdb_debug duckdb_release
-all: debug
+all: release
 
 clean:
 	rm -rf build
 	rm -rf duckdb/build
-
 
 duckdb_debug:
 	cd duckdb && \
@@ -23,11 +22,12 @@ debug: duckdb_debug
 release: duckdb_release
 	mkdir -p build/release && \
 	cd build/release && \
-	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. && \
+	cmake  -DCMAKE_BUILD_TYPE=Release ../.. && \
 	cmake --build .
 
 test: release
 	./duckdb/build/release/duckdb < test.sql
 
 format:
-	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp 
+	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp
+	cmake-format -i CMakeLists.txt

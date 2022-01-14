@@ -1,5 +1,9 @@
-.PHONY: all clean format debug release duckdb_debug duckdb_release
+.PHONY: all clean format debug release duckdb_debug duckdb_release pull
 all: release
+
+pull:
+	git submodule init
+	git submodule update --recursive --remote	
 
 clean:
 	rm -rf build
@@ -13,13 +17,13 @@ duckdb_release:
 	cd duckdb && \
 	BUILD_TPCH=1 make release
 
-debug: duckdb_debug
+debug: pull duckdb_debug
 	mkdir -p build/debug && \
 	cd build/debug && \
 	cmake  -DCMAKE_BUILD_TYPE=Debug ../.. && \
 	cmake --build .
 
-release: duckdb_release
+release: pull duckdb_release
 	mkdir -p build/release && \
 	cd build/release && \
 	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. && \

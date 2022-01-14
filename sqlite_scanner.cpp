@@ -468,9 +468,9 @@ AttachBind(ClientContext &context, vector<Value> &inputs,
 
   for (auto &kv : named_parameters) {
     if (kv.first == "schema") {
-      result->schema = kv.second.str_value;
+      result->schema = StringValue::Get(kv.second);
     } else if (kv.first == "overwrite") {
-      result->overwrite = kv.second.value_.boolean;
+      result->overwrite = BooleanValue::Get(kv.second);
     }
   }
 

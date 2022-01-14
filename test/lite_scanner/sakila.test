@@ -252,3 +252,387 @@ Drama	4587.0
 Family	4226.0
 Foreign	4271.0
 Games	4281.0
+
+
+## queries from https://github.com/joelsotelods/sakila-db-queries
+query I
+select upper(first_name || ' ' || last_name) "Actor Name" from actor order by last_name, first_name limit 10;
+----
+CHRISTIAN AKROYD
+DEBBIE AKROYD
+KIRSTEN AKROYD
+CUBA ALLEN
+KIM ALLEN
+MERYL ALLEN
+ANGELINA ASTAIRE
+RUSSELL BACALL
+AUDREY BAILEY
+JESSICA BAILEY
+
+
+query III
+select actor_id, first_name, last_name 
+from actor 
+where lower(first_name) = lower('Joe');
+----
+9	JOE	SWANK
+
+
+query IIII
+select * 
+from actor 
+where upper(last_name) like '%GEN%' ORDER BY last_name, first_name; 
+----
+14	VIVIEN	BERGEN	2021-03-06 15:51:59
+107	GINA	DEGENERES	2021-03-06 15:51:59
+41	JODIE	DEGENERES	2021-03-06 15:51:59
+166	NICK	DEGENERES	2021-03-06 15:52:00
+
+
+query IIII
+select * 
+from actor 
+where upper(last_name) like '%LI%' 
+order by last_name, first_name;
+----
+86	GREG	CHAPLIN	2021-03-06 15:51:59
+82	WOODY	JOLIE	2021-03-06 15:51:59
+34	AUDREY	OLIVIER	2021-03-06 15:51:59
+15	CUBA	OLIVIER	2021-03-06 15:51:59
+172	GROUCHO	WILLIAMS	2022-01-14 06:57:27
+137	MORGAN	WILLIAMS	2021-03-06 15:52:00
+72	SEAN	WILLIAMS	2021-03-06 15:51:59
+83	BEN	WILLIS	2021-03-06 15:51:59
+96	GENE	WILLIS	2021-03-06 15:51:59
+164	HUMPHREY	WILLIS	2021-03-06 15:52:00
+
+
+query II
+select country_id, country 
+from country 
+where country in ('Afghanistan', 'Bangladesh', 'China') ORDER BY country_id;
+----
+1	Afghanistan
+12	Bangladesh
+23	China
+
+
+query II
+select last_name, count(*) actor_count 
+from actor 
+group by last_name
+having actor_count >1
+order by actor_count desc, last_name limit 10;
+----
+KILMER	5
+NOLTE	4
+TEMPLE	4
+AKROYD	3
+ALLEN	3
+BERRY	3
+DAVIS	3
+DEGENERES	3
+GARLAND	3
+GUINESS	3
+
+
+query IIII
+select * from actor where first_name = 'GROUCHO' and last_name = 'WILLIAMS';
+----
+172	GROUCHO	WILLIAMS	2022-01-14 06:57:27
+
+
+query IIIIII
+select stf.first_name, stf.last_name, adr.address, adr.district, adr.postal_code, adr.city_id 
+from staff stf
+left join address adr
+on stf.address_id = adr.address_id order by last_name, first_name;
+----
+Mike	Hillyer	23 Workhaven Lane	 	NULL	300
+Jon	Stephens	1411 Lillydale Drive	 	NULL	576
+
+
+query III
+select stf.first_name, stf.last_name, cast(sum(pay.amount) as integer)
+from staff stf
+left join payment pay
+on stf.staff_id = pay.staff_id
+WHERE MONTH(pay.payment_date) = 8
+and YEAR(pay.payment_date) = 2005
+group by stf.first_name, stf.last_name order by last_name, first_name;
+----
+Mike	Hillyer	11853
+Jon	Stephens	12218
+
+
+query II
+select flm.title, count(*) number_of_actors
+from film flm
+inner join film_actor fim_act
+on flm.film_id = fim_act.film_id
+group by flm.title
+order by number_of_actors desc, title limit 10;
+----
+LAMBS CINCINATTI	15
+BOONDOCK BALLROOM	13
+CHITTY LOCK	13
+CRAZY HOME	13
+DRACULA CRYSTAL	13
+MUMMY CREATURES	13
+RANDOM GO	13
+ARABIA DOGMA	12
+HELLFIGHTERS SIERRA	12
+LESSON CLEOPATRA	12
+
+
+query II
+select flm.title, count(*) number_in_inventory
+from film flm
+inner join inventory inv
+on flm.film_id = inv.film_id
+where lower(flm.title) = lower('Hunchback Impossible')
+group by flm.title;
+----
+HUNCHBACK IMPOSSIBLE	6
+
+
+query III
+select cust.first_name, cust.last_name, sum(pay.amount) "Total Amount Paid"
+from payment pay
+join customer cust
+on pay.customer_id = cust.customer_id
+group by cust.first_name, cust.last_name
+order by cust.last_name, cust.first_name limit 10;
+----
+RAFAEL	ABNEY	97.79
+NATHANIEL	ADAM	133.72
+KATHLEEN	ADAMS	92.73
+DIANA	ALEXANDER	105.73
+GORDON	ALLARD	160.68
+SHIRLEY	ALLEN	126.69
+CHARLENE	ALVAREZ	114.73
+LISA	ANDERSON	106.76
+JOSE	ANDREW	96.75
+IDA	ANDREWS	76.77
+
+
+query I
+select title
+from film 
+where (title like 'K%' or title like 'Q%')
+and language_id in (
+	select language_id 
+	from language 
+	where name = 'English'
+)
+order by title;
+----
+KANE EXORCIST
+KARATE MOON
+KENTUCKIAN GIANT
+KICK SAVANNAH
+KILL BROTHERHOOD
+KILLER INNOCENT
+KING EVOLUTION
+KISS GLORY
+KISSING DOLLS
+KNOCK WARLOCK
+KRAMER CHOCOLATE
+KWAI HOMEWARD
+QUEEN LUKE
+QUEST MUSSOLINI
+QUILLS BULL
+
+
+query II
+select first_name, last_name 
+from actor
+where actor_id in (
+	select actor_id
+	from film_actor
+	where film_id in (
+		select film_id from film where lower(title) = lower('Alone Trip')
+	)
+) order by last_name, first_name;
+----
+RENEE	BALL
+KARL	BERRY
+LAURENCE	BULLOCK
+ED	CHASE
+CHRIS	DEPP
+SPENCER	DEPP
+WOODY	JOLIE
+UMA	WOOD
+
+
+query III
+select first_name, last_name, email
+from customer
+where address_id in (
+	select address_id
+	from address
+	where city_id in (
+		select city_id
+		from city
+		where country_id in (
+			select country_id
+			from country
+			where country = 'Canada'
+		)
+	)
+) order by last_name, first_name;
+----
+DERRICK	BOURQUE	DERRICK.BOURQUE@sakilacustomer.org
+LORETTA	CARPENTER	LORETTA.CARPENTER@sakilacustomer.org
+CURTIS	IRBY	CURTIS.IRBY@sakilacustomer.org
+DARRELL	POWER	DARRELL.POWER@sakilacustomer.org
+TROY	QUIGLEY	TROY.QUIGLEY@sakilacustomer.org
+
+
+query III
+select cus.first_name, cus.last_name, cus.email
+from customer cus
+join address adr
+on cus.address_id = adr.address_id
+join city cit
+on adr.city_id = cit.city_id
+join country cou
+on cit.country_id = cou.country_id
+where cou.country = 'Canada' order by last_name, first_name;
+----
+DERRICK	BOURQUE	DERRICK.BOURQUE@sakilacustomer.org
+LORETTA	CARPENTER	LORETTA.CARPENTER@sakilacustomer.org
+CURTIS	IRBY	CURTIS.IRBY@sakilacustomer.org
+DARRELL	POWER	DARRELL.POWER@sakilacustomer.org
+TROY	QUIGLEY	TROY.QUIGLEY@sakilacustomer.org
+
+
+query III
+select film_id, title, release_year
+from film
+where film_id in (
+	select film_id
+	from film_category
+	where category_id in (
+		select category_id
+		from category
+		where name = 'Family'
+	)
+) order by film_id limit 10;
+----
+5	AFRICAN EGG	2006
+31	APACHE DIVINE	2006
+43	ATLANTIS CAUSE	2006
+50	BAKED CLEOPATRA	2006
+53	BANG KWAI	2006
+63	BEDAZZLED MARRIED	2006
+71	BILKO ANONYMOUS	2006
+80	BLANKET BEVERLY	2006
+82	BLOOD ARGONAUTS	2006
+83	BLUES INSTINCT	2006
+
+
+query IIII
+select A.film_id, A.title, B.*
+from film A
+join (
+	select inv.film_id, count(ren.rental_id) times_rented
+	from rental ren
+	join inventory inv
+	on ren.inventory_id = inv.inventory_id
+	group by inv.film_id
+) B
+on A.film_id = B.film_id
+order by B.times_rented desc, A.film_id limit 10;
+----
+103	BUCKET BROTHERHOOD	103	34
+738	ROCKETEER MOTHER	738	33
+331	FORWARD TEMPLE	331	32
+382	GRIT CLOCKWORK	382	32
+489	JUGGLER HARDLY	489	32
+730	RIDGEMONT SUBMARINE	730	32
+767	SCALAWAG DUCK	767	32
+31	APACHE DIVINE	31	31
+369	GOODFELLAS SALUTE	369	31
+418	HOBBIT ALIEN	418	31
+
+
+query II
+select A.store_id, B.sales 
+from store A
+join (
+	select cus.store_id, cast(sum(pay.amount) as integer) sales
+	from customer cus
+	join payment pay
+	on pay.customer_id = cus.customer_id
+group by cus.store_id
+) B
+on A.store_id = B.store_id
+order by a.store_id;
+----
+1	37001
+2	30414
+
+
+query III
+select sto.store_id, cit.city, cou.country
+from store sto
+left join address adr
+on sto.address_id = adr.address_id
+join city cit
+on adr.city_id = cit.city_id
+join country cou
+on cit.country_id = cou.country_id order by store_id;
+----
+1	Lethbridge	Canada
+2	Woodridge	Australia
+
+
+query IIII
+select A.*, B.sales 
+from (
+	select sto.store_id, cit.city, cou.country
+	from store sto
+	left join address adr
+	on sto.address_id = adr.address_id
+	join city cit
+	on adr.city_id = cit.city_id
+	join country cou
+	on cit.country_id = cou.country_id
+) A
+join (
+	select cus.store_id, cast(sum(pay.amount) as integer) sales
+	from customer cus
+	join payment pay
+	on pay.customer_id = cus.customer_id
+	group by cus.store_id
+) B
+on A.store_id = B.store_id
+order by a.store_id;
+----
+1	Lethbridge	Canada	37001
+2	Woodridge	Australia	30414
+
+
+query II
+select cat.name category_name, cast(sum( IFNULL(pay.amount, 0) ) as integer) revenue
+from category cat
+left join film_category flm_cat
+on cat.category_id = flm_cat.category_id
+left join film fil
+on flm_cat.film_id = fil.film_id
+left join inventory inv
+on fil.film_id = inv.film_id
+left join rental ren
+on inv.inventory_id = ren.inventory_id
+left join payment pay
+on ren.rental_id = pay.rental_id
+group by cat.name
+order by revenue desc
+limit 5;
+----
+Sports	5314
+Sci-Fi	4756
+Animation	4656
+Drama	4587
+Comedy	4383

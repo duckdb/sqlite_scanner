@@ -1,5 +1,5 @@
-# DuckDB SQLite "Scanner" Extension
-To build, type ```
+To build, type 
+```
 make
 ```
 

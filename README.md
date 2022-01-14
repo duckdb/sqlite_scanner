@@ -1,4 +1,5 @@
-To build, type ```
+To build, type 
+```
 make
 ```
 

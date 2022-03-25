@@ -263,8 +263,8 @@ SqliteParallelInit(ClientContext &context, const FunctionData *bind_data_p,
 }
 
 static void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
-                FunctionOperatorData *operator_state, DataChunk *,
-                DataChunk &output) {
+                       FunctionOperatorData *operator_state, DataChunk *,
+                       DataChunk &output) {
 
   D_ASSERT(operator_state);
   D_ASSERT(bind_data_p);

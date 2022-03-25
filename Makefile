@@ -20,13 +20,13 @@ duckdb_release:
 debug: pull duckdb_debug
 	mkdir -p build/debug && \
 	cd build/debug && \
-	cmake  -DCMAKE_BUILD_TYPE=Debug ../.. && \
+	cmake  -DCMAKE_BUILD_TYPE=Debug -DDUCKDB_INCLUDE_FOLDER=duckdb/src/include -DDUCKDB_LIBRARY_FOLDER=duckdb/build/debug/src  ../.. && \
 	cmake --build .
 
 release: pull duckdb_release
 	mkdir -p build/release && \
 	cd build/release && \
-	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo ../.. && \
+	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDUCKDB_INCLUDE_FOLDER=duckdb/src/include -DDUCKDB_LIBRARY_FOLDER=duckdb/build/release/src ../.. && \
 	cmake --build .
 
 test: release

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.12)
 
 if(POLICY CMP0026)
   cmake_policy(SET CMP0026 NEW)
@@ -24,19 +24,17 @@ endif()
 
 project(sqlite_scanner)
 
-# skip building extensions on mingw
-if(WIN32 AND NOT MSVC)
-  return()
-endif()
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
-include_directories(duckdb/src/include)
+message(${DUCKDB_INCLUDE_FOLDER})
+
+include_directories(${DUCKDB_INCLUDE_FOLDER})
 include_directories(sqlite/)
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
   add_compile_options(-Wall -Werror -pedantic -fsanitize=address)
-  link_directories(duckdb/build/debug/src)
-else()
-  link_directories(duckdb/build/release/src)
 endif()
+
+link_directories(${DUCKDB_LIBRARY_FOLDER})
 
 add_library(sqlite_scanner SHARED sqlite_scanner.cpp sqlite/sqlite3.c)
 set_target_properties(sqlite_scanner PROPERTIES PREFIX "")

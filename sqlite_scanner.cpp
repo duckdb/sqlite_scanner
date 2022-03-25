@@ -64,16 +64,14 @@ static void check_ok(int rc, sqlite3 *db) {
   }
 }
 
-unique_ptr<FunctionData>
-SqliteBind(ClientContext &context, vector<Value> &inputs,
-           unordered_map<string, Value> &named_parameters,
-           vector<LogicalType> &input_table_types,
-           vector<string> &input_table_names, vector<LogicalType> &return_types,
-           vector<string> &names) {
+static unique_ptr<FunctionData> SqliteBind(ClientContext &context,
+                                           TableFunctionBindInput &input,
+                                           vector<LogicalType> &return_types,
+                                           vector<string> &names) {
 
   auto result = make_unique<SqliteBindData>();
-  result->file_name = inputs[0].GetValue<string>();
-  result->table_name = inputs[1].GetValue<string>();
+  result->file_name = input.inputs[0].GetValue<string>();
+  result->table_name = input.inputs[1].GetValue<string>();
 
   sqlite3 *db;
   sqlite3_stmt *res;
@@ -264,7 +262,7 @@ SqliteParallelInit(ClientContext &context, const FunctionData *bind_data_p,
   return move(result);
 }
 
-void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
+static void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
                 FunctionOperatorData *operator_state, DataChunk *,
                 DataChunk &output) {
 
@@ -457,16 +455,15 @@ struct AttachFunctionData : public TableFunctionData {
   string file_name = "";
 };
 
-static unique_ptr<FunctionData>
-AttachBind(ClientContext &context, vector<Value> &inputs,
-           unordered_map<string, Value> &named_parameters,
-           vector<LogicalType> &input_table_types,
-           vector<string> &input_table_names, vector<LogicalType> &return_types,
-           vector<string> &names) {
-  auto result = make_unique<AttachFunctionData>();
-  result->file_name = inputs[0].GetValue<string>();
+static unique_ptr<FunctionData> AttachBind(ClientContext &context,
+                                           TableFunctionBindInput &input,
+                                           vector<LogicalType> &return_types,
+                                           vector<string> &names) {
 
-  for (auto &kv : named_parameters) {
+  auto result = make_unique<AttachFunctionData>();
+  result->file_name = input.inputs[0].GetValue<string>();
+
+  for (auto &kv : input.named_parameters) {
     if (kv.first == "schema") {
       result->schema = StringValue::Get(kv.second);
     } else if (kv.first == "overwrite") {

@@ -1,9 +1,9 @@
-.PHONY: all clean format debug release duckdb_debug duckdb_release pull
+.PHONY: all clean format debug release duckdb_debug duckdb_release pull update
 all: release
 
 pull:
 	git submodule init
-	git submodule update --recursive --remote	
+	#git submodule update --recursive --remote	
 
 clean:
 	rm -rf build
@@ -35,3 +35,6 @@ test: release
 format:
 	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp
 	cmake-format -i CMakeLists.txt
+
+update:
+	git submodule update --remote --merge

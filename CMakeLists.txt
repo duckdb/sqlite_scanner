@@ -38,13 +38,17 @@ link_directories(${DUCKDB_LIBRARY_FOLDER})
 
 add_library(sqlite_scanner SHARED sqlite_scanner.cpp sqlite/sqlite3.c)
 set_target_properties(sqlite_scanner PROPERTIES PREFIX "")
-target_link_libraries(sqlite_scanner duckdb)
 
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
   target_link_libraries(sqlite_scanner -fsanitize=address)
 endif()
 
 set_target_properties(sqlite_scanner PROPERTIES SUFFIX ".duckdb_extension")
+
+if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+  set_target_properties(sqlite_scanner PROPERTIES LINK_FLAGS
+                                                  "-undefined dynamic_lookup")
+endif()
 
 if(MSVC)
   set_target_properties(sqlite_scanner PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG

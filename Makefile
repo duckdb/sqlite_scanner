@@ -30,7 +30,7 @@ release: pull duckdb_release
 	cmake --build .
 
 test: release
-	../duckdb/build/debug/test/unittest --test-dir . "[lite_scanner]"
+	../duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
 
 format:
 	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp

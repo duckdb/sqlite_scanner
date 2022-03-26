@@ -54,11 +54,11 @@ jobs:
           
           
 
- windows:
-   name: Windows (64-bit)
-   runs-on: windows-latest
+  windows:
+    name: Windows (64-bit)
+    runs-on: windows-latest
 
-   steps:
+    steps:
     - uses: actions/checkout@v2
        with:
          fetch-depth: 0

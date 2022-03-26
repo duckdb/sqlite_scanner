@@ -24,9 +24,20 @@ endif()
 
 project(sqlite_scanner)
 
-set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_VERBOSE_MAKEFILE OFF)
 
-message(${DUCKDB_INCLUDE_FOLDER})
+option(
+  OSX_BUILD_UNIVERSAL
+  "Build both architectures on OSX and create a single binary containing both."
+  FALSE)
+if(OSX_BUILD_UNIVERSAL)
+  if(NOT APPLE)
+    error("This only makes sense on OSX")
+  endif()
+  set(CMAKE_OSX_ARCHITECTURES
+      "x86_64;arm64"
+      CACHE STRING "Build architectures for Mac OS X" FORCE)
+endif()
 
 include_directories(${DUCKDB_INCLUDE_FOLDER})
 include_directories(sqlite/)

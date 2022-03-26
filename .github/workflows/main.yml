@@ -70,7 +70,8 @@ jobs:
 
     - name: Build
       run: |
-        make duckdb_release release
+        make duckdb_release
+        (mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release -DDUCKDB_INCLUDE_FOLDER=duckdb/src/include -DDUCKDB_LIBRARY_FOLDER=duckdb/build/release/src/Release  ../.. && cmake --build .)
 
     - name: Make tpch test database
       run: |

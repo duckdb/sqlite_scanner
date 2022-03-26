@@ -36,7 +36,7 @@ jobs:
         git submodule update --remote --merge
 
     - name: Build
-      run: make release
+      run: make release duckdb_release
 
     - name: Make tpch test database
       run: |

@@ -1,6 +1,6 @@
 To build, type 
 ```
-make
+make duckdb_release release
 ```
 
 To run, run the bundled `duckdb` shell:

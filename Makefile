@@ -17,19 +17,19 @@ duckdb_release:
 	cd duckdb && \
 	BUILD_TPCH=1 make release
 
-debug: pull duckdb_debug
+debug: pull 
 	mkdir -p build/debug && \
 	cd build/debug && \
 	cmake  -DCMAKE_BUILD_TYPE=Debug -DDUCKDB_INCLUDE_FOLDER=duckdb/src/include -DDUCKDB_LIBRARY_FOLDER=duckdb/build/debug/src  ../.. && \
 	cmake --build .
 
-release: pull duckdb_release
+release: pull 
 	mkdir -p build/release && \
 	cd build/release && \
 	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDUCKDB_INCLUDE_FOLDER=duckdb/src/include -DDUCKDB_LIBRARY_FOLDER=duckdb/build/release/src ../.. && \
 	cmake --build .
 
-test: release
+test: release duckdb_release
 	../duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
 
 format:

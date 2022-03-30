@@ -171,7 +171,7 @@ static void SqliteInitInternal(ClientContext &context,
   auto col_names = StringUtil::Join(
       local_state->column_ids.data(), local_state->column_ids.size(), ", ",
       [&](const idx_t column_id) {
-        return column_id == COLUMN_IDENTIFIER_ROW_ID
+        return column_id == (column_t)-1
                    ? "ROWID"
                    : '"' + bind_data->names[column_id] + '"';
       });

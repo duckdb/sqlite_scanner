@@ -7,7 +7,6 @@ ifeq (${OSX_BUILD_UNIVERSAL}, 1)
 	OSX_BUILD_UNIVERSAL_FLAG=-DOSX_BUILD_UNIVERSAL=1
 endif
 
-
 pull:
 	git submodule init
 	git submodule update --recursive --remote	

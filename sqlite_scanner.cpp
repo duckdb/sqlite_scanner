@@ -449,8 +449,6 @@ struct AttachFunctionData : public TableFunctionData {
   AttachFunctionData() {}
 
   bool finished = false;
-  string schema = DEFAULT_SCHEMA;
-  string suffix = "";
   bool overwrite = false;
   string file_name = "";
 };
@@ -464,9 +462,7 @@ static unique_ptr<FunctionData> AttachBind(ClientContext &context,
   result->file_name = input.inputs[0].GetValue<string>();
 
   for (auto &kv : input.named_parameters) {
-    if (kv.first == "schema") {
-      result->schema = StringValue::Get(kv.second);
-    } else if (kv.first == "overwrite") {
+    if (kv.first == "overwrite") {
       result->overwrite = BooleanValue::Get(kv.second);
     }
   }
@@ -490,30 +486,9 @@ static void AttachFunction(ClientContext &context,
   check_ok(
       sqlite3_open_v2(data.file_name.c_str(), &db, SQLITE_OPEN_FLAGS, nullptr),
       db);
+  auto dconn = Connection(context.db->GetDatabase(context));
+
   {
-    // create a template create view info that is filled in in the loop below
-    CreateViewInfo view_info;
-    view_info.schema = data.schema;
-    view_info.temporary = true;
-    view_info.on_conflict = data.overwrite
-                                ? OnCreateConflict::REPLACE_ON_CONFLICT
-                                : OnCreateConflict::ERROR_ON_CONFLICT;
-
-    vector<unique_ptr<ParsedExpression>> parameters;
-    parameters.push_back(
-        make_unique<ConstantExpression>(Value(data.file_name)));
-    parameters.push_back(make_unique<ConstantExpression>(Value()));
-    auto *table_name_ptr = (ConstantExpression *)parameters.back().get();
-    auto table_function = make_unique<TableFunctionRef>();
-    table_function->function =
-        make_unique<FunctionExpression>("sqlite_scan", move(parameters));
-
-    auto select_node = make_unique<SelectNode>();
-    select_node->select_list.push_back(make_unique<StarExpression>());
-    select_node->from_table = move(table_function);
-
-    view_info.query = make_unique<SelectStatement>();
-    view_info.query->node = move(select_node);
 
     check_ok(sqlite3_prepare_v2(
                  db, "SELECT name FROM sqlite_master WHERE type='table'", -1,
@@ -523,15 +498,10 @@ static void AttachFunction(ClientContext &context,
     while (sqlite3_step(res) == SQLITE_ROW) {
       auto table_name = string((const char *)sqlite3_column_text(res, 0));
 
-      view_info.view_name = table_name;
-      table_name_ptr->value = Value(table_name);
-      // CREATE VIEW AS SELECT * FROM sqlite_scan()
-      auto binder = Binder::CreateBinder(context);
-      auto bound_statement = binder->Bind(*view_info.query->Copy());
-      view_info.types = bound_statement.types;
-      auto view_info_copy = view_info.Copy();
-      context.db->GetCatalog().CreateView(
-          context, (CreateViewInfo *)view_info_copy.get());
+      dconn
+          .TableFunction("sqlite_scan",
+                         {Value(data.file_name), Value(table_name)})
+          ->CreateView(table_name, data.overwrite, false);
     }
     check_ok(sqlite3_finalize(res), db);
   }
@@ -543,18 +513,7 @@ static void AttachFunction(ClientContext &context,
 
     while (sqlite3_step(res) == SQLITE_ROW) {
       auto view_sql = string((const char *)sqlite3_column_text(res, 0));
-      Parser p;
-      // TODO what if we can't parse that thing
-      p.ParseQuery(view_sql);
-      D_ASSERT(p.statements[0]->type == StatementType::CREATE_STATEMENT);
-      auto &create_view_statement = (CreateStatement &)*p.statements[0];
-      D_ASSERT(create_view_statement.info->type == CatalogType::VIEW_ENTRY);
-      auto view_info = (CreateViewInfo *)create_view_statement.info.get();
-      view_info->schema = data.schema;
-      auto binder = Binder::CreateBinder(context);
-      auto bound_statement = binder->Bind(*view_info->query->Copy());
-      view_info->types = bound_statement.types;
-      context.db->GetCatalog().CreateView(context, view_info);
+      dconn.Query(view_sql);
     }
     check_ok(sqlite3_finalize(res), db);
   }
@@ -576,8 +535,6 @@ DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
   TableFunction attach_func("sqlite_attach", {LogicalType::VARCHAR},
                             AttachFunction, AttachBind);
   attach_func.named_parameters["overwrite"] = LogicalType::BOOLEAN;
-  attach_func.named_parameters["schema"] = LogicalType::VARCHAR;
-  attach_func.named_parameters["suffix"] = LogicalType::VARCHAR;
 
   CreateTableFunctionInfo attach_info(attach_func);
   catalog.CreateTableFunction(context, &attach_info);

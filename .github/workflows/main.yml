@@ -75,11 +75,12 @@ jobs:
 
     - name: Make tpch test database
       run: |
-        ./duckdb/build/release/duckdb < tpch-export.duckdb
+        ./duckdb/build/release/Release/duckdb.exe < tpch-export.duckdb
+        choco install sqlite -y
         sqlite3 tpch.db < tpch-create.sqlite
 
     - name: Test
-      run: ./duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
+      run: ./duckdb/build/release/test/Release/unittest.exe --test-dir . "[lite_scanner]"
 
     - uses: actions/upload-artifact@v2
       with:

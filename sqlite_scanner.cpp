@@ -2,23 +2,12 @@
 #include "duckdb.hpp"
 
 #include "sqlite3.h"
-#include "duckdb/function/table_function.hpp"
-#include "duckdb/common/types/date.hpp"
-#include "duckdb/common/types/timestamp.hpp"
-#include "duckdb/parser/parsed_data/create_table_function_info.hpp"
-#include "duckdb/parallel/parallel_state.hpp"
-#include "duckdb/storage/statistics/validity_statistics.hpp"
+#include <stdint.h>
 #include "duckdb/parser/parser.hpp"
 #include "duckdb/parser/expression/cast_expression.hpp"
-#include "duckdb/main/client_context.hpp"
-#include "duckdb/parser/parsed_data/create_view_info.hpp"
-#include "duckdb/planner/binder.hpp"
-#include "duckdb/parser/query_node/select_node.hpp"
-#include "duckdb/parser/expression/star_expression.hpp"
-#include "duckdb/parser/tableref/table_function_ref.hpp"
-#include "duckdb/parser/expression/function_expression.hpp"
-#include "duckdb/parser/expression/constant_expression.hpp"
-#include "duckdb/parser/statement/create_statement.hpp"
+#include "duckdb/parser/parsed_data/create_table_function_info.hpp"
+#include "duckdb/common/types/date.hpp"
+#include "duckdb/common/types/timestamp.hpp"
 
 using namespace duckdb;
 
@@ -314,7 +303,7 @@ static void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
           throw std::runtime_error("Expected integer, got something else");
         }
         auto raw_int = sqlite3_value_int(val);
-        if (raw_int > NumericLimits<int16_t>::Maximum()) {
+        if (raw_int > INT16_MAX) {
           throw std::runtime_error("int16 value out of range");
         }
         FlatVector::GetData<int16_t>(out_vec)[out_idx] = (int16_t)raw_int;

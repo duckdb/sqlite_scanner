@@ -26,6 +26,29 @@ struct SqliteBindData : public FunctionData {
   vector<uint64_t> decimal_multipliers;
 
   idx_t rows_per_group = 100000;
+
+  unique_ptr<FunctionData> Copy() const override {
+    auto copy = make_unique<SqliteBindData>();
+    copy->file_name = file_name;
+    copy->table_name = table_name;
+    copy->names = names;
+    copy->types = types;
+    copy->max_rowid = max_rowid;
+    copy->not_nulls = not_nulls;
+    copy->decimal_multipliers = decimal_multipliers;
+    copy->rows_per_group = rows_per_group;
+
+    return copy;
+  }
+
+  bool Equals(const FunctionData &other_p) const override {
+    auto other = (SqliteBindData &)other_p;
+    return other.file_name == file_name && other.table_name == table_name &&
+           other.names == names && other.types == types &&
+           other.max_rowid == max_rowid && other.not_nulls == not_nulls &&
+           other.decimal_multipliers == decimal_multipliers &&
+           other.rows_per_group == rows_per_group;
+  }
 };
 
 struct SqliteOperatorData : public FunctionOperatorData {
@@ -252,7 +275,7 @@ SqliteParallelInit(ClientContext &context, const FunctionData *bind_data_p,
 }
 
 static void SqliteScan(ClientContext &context, const FunctionData *bind_data_p,
-                       FunctionOperatorData *operator_state, DataChunk *,
+                       FunctionOperatorData *operator_state,
                        DataChunk &output) {
 
   D_ASSERT(operator_state);
@@ -464,7 +487,7 @@ static unique_ptr<FunctionData> AttachBind(ClientContext &context,
 static void AttachFunction(ClientContext &context,
                            const FunctionData *bind_data,
                            FunctionOperatorData *operator_state,
-                           DataChunk *input, DataChunk &output) {
+                           DataChunk &output) {
   auto &data = (AttachFunctionData &)*bind_data;
   if (data.finished) {
     return;

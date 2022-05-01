@@ -73,7 +73,6 @@ if(WIN32)
 endif()
 
 if(MSVC)
-  target_link_libraries(${TARGET_NAME} delayimp)
   set_target_properties(
     ${TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG
                               "${CMAKE_BINARY_DIR}/${OUTPUT_DIRECTORY}")

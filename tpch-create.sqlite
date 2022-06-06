@@ -69,11 +69,11 @@ CREATE TABLE LINEITEM ( L_ORDERKEY    INTEGER NOT NULL,
 
 .headers off
 .sep ,
-.import /tmp/nation.tbl nation
-.import /tmp/region.tbl region
-.import /tmp/part.tbl part
-.import /tmp/supplier.tbl supplier
-.import /tmp/partsupp.tbl partsupp
-.import /tmp/customer.tbl customer
-.import /tmp/orders.tbl orders
-.import /tmp/lineitem.tbl lineitem
+.import nation.tbl nation
+.import region.tbl region
+.import part.tbl part
+.import supplier.tbl supplier
+.import partsupp.tbl partsupp
+.import customer.tbl customer
+.import orders.tbl orders
+.import lineitem.tbl lineitem

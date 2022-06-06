@@ -37,7 +37,7 @@ struct SqliteBindData : public FunctionData {
 		copy->decimal_multipliers = decimal_multipliers;
 		copy->rows_per_group = rows_per_group;
 
-		return copy;
+		return move(copy);
 	}
 
 	bool Equals(const FunctionData &other_p) const override {

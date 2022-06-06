@@ -1,9 +1,9 @@
 CALL dbgen(sf=0.1);
-COPY nation TO '/tmp/nation.tbl';
-COPY region TO '/tmp/region.tbl';
-COPY part TO '/tmp/part.tbl';
-COPY supplier TO '/tmp/supplier.tbl';
-COPY partsupp TO '/tmp/partsupp.tbl';
-COPY customer TO '/tmp/customer.tbl';
-COPY orders TO '/tmp/orders.tbl';
-COPY lineitem TO '/tmp/lineitem.tbl';
+COPY nation TO 'nation.tbl';
+COPY region TO 'region.tbl';
+COPY part TO 'part.tbl';
+COPY supplier TO 'supplier.tbl';
+COPY partsupp TO 'partsupp.tbl';
+COPY customer TO 'customer.tbl';
+COPY orders TO 'orders.tbl';
+COPY lineitem TO 'lineitem.tbl';

@@ -353,7 +353,7 @@ Jon	Stephens	1411 Lillydale Drive	 	NULL	576
 
 
 query III
-select stf.first_name, stf.last_name, cast(sum(pay.amount) as integer)
+select stf.first_name, stf.last_name, floor(sum(pay.amount))
 from staff stf
 left join payment pay
 on stf.staff_id = pay.staff_id
@@ -561,7 +561,7 @@ query II
 select A.store_id, B.sales 
 from store A
 join (
-	select cus.store_id, cast(sum(pay.amount) as integer) sales
+	select cus.store_id, floor(sum(pay.amount)) sales
 	from customer cus
 	join payment pay
 	on pay.customer_id = cus.customer_id
@@ -601,7 +601,7 @@ from (
 	on cit.country_id = cou.country_id
 ) A
 join (
-	select cus.store_id, cast(sum(pay.amount) as integer) sales
+	select cus.store_id, floor(sum(pay.amount)) sales
 	from customer cus
 	join payment pay
 	on pay.customer_id = cus.customer_id
@@ -615,7 +615,7 @@ order by a.store_id;
 
 
 query II
-select cat.name category_name, cast(sum( IFNULL(pay.amount, 0) ) as integer) revenue
+select cat.name category_name, floor(sum( IFNULL(pay.amount, 0) ) ) revenue
 from category cat
 left join film_category flm_cat
 on cat.category_id = flm_cat.category_id

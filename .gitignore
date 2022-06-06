@@ -4,3 +4,5 @@ build
 cmake-build-debug
 sqlite/build
 tpch.db
+.clang-format
+*.tbl

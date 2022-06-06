@@ -39,8 +39,10 @@ test: release duckdb_release
 	../duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
 
 format:
+	cp duckdb/.clang-format .
 	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp
 	cmake-format -i CMakeLists.txt
+	rm .clang-format
 
 update:
 	git submodule update --remote --merge

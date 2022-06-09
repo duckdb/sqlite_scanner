@@ -1,4 +1,6 @@
+#ifndef DUCKDB_BUILD_LOADABLE_EXTENSION
 #define DUCKDB_BUILD_LOADABLE_EXTENSION
+#endif
 #include "duckdb.hpp"
 
 #include "sqlite3.h"

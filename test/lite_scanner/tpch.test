@@ -1,5 +1,5 @@
 statement ok
-LOAD 'build/release/sqlite_scanner.duckdb_extension';
+LOAD 'build/release/external_extension_build/sqlite_scanner.duckdb_extension';
 
 statement ok
 CALL sqlite_attach('tpch.db');

@@ -37,21 +37,21 @@ jobs:
         git submodule update --remote --merge
 
     - name: Build
-      run: make release duckdb_release
+      run: make release
 
     - name: Make tpch test database
       run: |
-        ./duckdb/build/release/duckdb < tpch-export.duckdb
+        ./build/release/duckdb < tpch-export.duckdb
         sqlite3 tpch.db < tpch-create.sqlite
 
     - name: Test
-      run: ./duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
+      run: ./build/release/test/unittest --test-dir . "[lite_scanner]"
 
     - uses: actions/upload-artifact@v2
       with:
         name: sqlite-scanner-linux
         path: |
-          build/release/sqlite_scanner.duckdb_extension
+          build/release/extension/sqlitescanner/sqlite_scanner.duckdb_extension
           
           
 
@@ -76,16 +76,16 @@ jobs:
 
     - name: Make tpch test database
       run: |
-        ./duckdb/build/release/Release/duckdb.exe < tpch-export.duckdb
+        ./build/release/Release/duckdb.exe < tpch-export.duckdb
         choco install sqlite -y
         sqlite3 tpch.db < tpch-create.sqlite
 
     - name: Test
-      run: ./duckdb/build/release/test/Release/unittest.exe --test-dir . "[lite_scanner]"
+      run: ./build/release/test/Release/unittest.exe --test-dir . "[lite_scanner]"
 
     - uses: actions/upload-artifact@v2
       with:
         name: sqlite-scanner-windows
         path: |
-          build/release/sqlite_scanner.duckdb_extension
+          build/release/extension/sqlitescanner/sqlite_scanner.duckdb_extension
           

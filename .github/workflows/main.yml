@@ -71,7 +71,7 @@ jobs:
 
     - name: Build
       run: |
-        (mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release ../../duckdb/CMakeLists.txt -DEXTERNAL_EXTENSION_DIRECTORY=../../sqlitescanner -B. && cmake --build . --config Release)
+        (mkdir -p build/release && cd build/release && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TPCH_EXTENSION=1 ../../duckdb/CMakeLists.txt -DEXTERNAL_EXTENSION_DIRECTORY=../../sqlitescanner -B. && cmake --build . --config Release)
 
     - name: Make tpch test database
       run: |

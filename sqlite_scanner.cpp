@@ -208,12 +208,12 @@ static bool SqliteParallelStateNext(ClientContext &context, const FunctionData *
 	return false;
 }
 
-static unique_ptr<LocalTableFunctionState> SqliteInitLocalState(ClientContext &context, TableFunctionInitInput &input,
-                                                                GlobalTableFunctionState *global_state) {
+static unique_ptr<LocalTableFunctionState>
+SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, GlobalTableFunctionState *global_state) {
 	auto &gstate = (SqliteGlobalState &)*global_state;
 	auto result = make_unique<SqliteLocalState>();
 	result->column_ids = input.column_ids;
-	if (!SqliteParallelStateNext(context, input.bind_data, *result, gstate)) {
+	if (!SqliteParallelStateNext(context.client, input.bind_data, *result, gstate)) {
 		result->done = true;
 	}
 	return move(result);

@@ -41,7 +41,7 @@ release: pull
 	cmake --build .
 
 test: release duckdb_release
-	../duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
+	${DUCKDB_ROOT}/build/release/test/unittest --test-dir . "[lite_scanner]"
 
 format:
 	cp ${DUCKDB_ROOT}/.clang-format .

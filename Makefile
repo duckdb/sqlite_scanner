@@ -7,6 +7,11 @@ ifeq (${OSX_BUILD_UNIVERSAL}, 1)
 	OSX_BUILD_UNIVERSAL_FLAG=-DOSX_BUILD_UNIVERSAL=1
 endif
 
+DUCKDB_ROOT_DIRECTORY=duckdb
+ifneq ("${DUCKDB_ROOT}a", "a")
+	DUCKDB_ROOT_DIRECTORY:=${DUCKDB_ROOT}
+endif
+
 pull:
 	git submodule init
 	git submodule update --recursive --remote	
@@ -26,20 +31,20 @@ duckdb_release:
 debug: pull 
 	mkdir -p build/debug && \
 	cd build/debug && \
-	cmake -DCMAKE_BUILD_TYPE=Debug -DDUCKDB_INCLUDE_FOLDER=duckdb/src/include -DDUCKDB_LIBRARY_FOLDER=duckdb/build/debug/src ${OSX_BUILD_UNIVERSAL_FLAG}  ../.. && \
+	cmake -DCMAKE_BUILD_TYPE=Debug -DDUCKDB_INCLUDE_FOLDER=${DUCKDB_ROOT}/src/include -DDUCKDB_LIBRARY_FOLDER=${DUCKDB_ROOT}/build/debug/src ${OSX_BUILD_UNIVERSAL_FLAG}  ../.. && \
 	cmake --build .
 
 release: pull 
 	mkdir -p build/release && \
 	cd build/release && \
-	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDUCKDB_INCLUDE_FOLDER=duckdb/src/include -DDUCKDB_LIBRARY_FOLDER=duckdb/build/release/src ${OSX_BUILD_UNIVERSAL_FLAG} ../.. && \
+	cmake  -DCMAKE_BUILD_TYPE=RelWithDebInfo -DDUCKDB_INCLUDE_FOLDER=${DUCKDB_ROOT}/src/include -DDUCKDB_LIBRARY_FOLDER=${DUCKDB_ROOT}/build/release/src ${OSX_BUILD_UNIVERSAL_FLAG} ../.. && \
 	cmake --build .
 
 test: release duckdb_release
-	../duckdb/build/release/test/unittest --test-dir . "[lite_scanner]"
+	${DUCKDB_ROOT}/build/release/test/unittest --test-dir . "[lite_scanner]"
 
 format:
-	cp duckdb/.clang-format .
+	cp ${DUCKDB_ROOT}/.clang-format .
 	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp
 	cmake-format -i CMakeLists.txt
 	rm .clang-format

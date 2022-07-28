@@ -1,17 +1,8 @@
-To build, type 
-```
-make duckdb_release release
-```
+# DuckDB sqlitescanner extension
 
-To run, run the bundled `duckdb` shell:
-```
- ./duckdb/build/release/duckdb 
-```
+The sqlitescanner extension allows DuckDB to directly read data from a SQLite database file. The data can be queried directly from the underlying SQLite tables, or read into DuckDB tables.
 
-Then, load the SQLite extension like so:
-```SQL
-LOAD 'build/release/sqlite_scanner.duckdb_extension';
-```
+## Usage
 
 To make a SQLite file accessible to DuckDB, use the `ATTACH` command, for example with the bundled `sakila.db` file:
 ```SQL
@@ -50,3 +41,21 @@ Or run them all in both SQLite and DuckDB
 ./duckdb/build/release/duckdb < sakila-examples.sql
 sqlite3 sakila.db < sakila-examples.sql
 ```
+
+## Building & Loading the Extension
+
+To build, type 
+```
+make duckdb_release release
+```
+
+To run, run the bundled `duckdb` shell:
+```
+ ./duckdb/build/release/duckdb 
+```
+
+Then, load the SQLite extension like so:
+```SQL
+LOAD 'build/release/sqlite_scanner.duckdb_extension';
+```
+

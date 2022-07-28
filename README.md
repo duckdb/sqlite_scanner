@@ -5,18 +5,18 @@ The sqlitescanner extension allows DuckDB to directly read data from a SQLite da
 ## Usage
 
 To make a SQLite file accessible to DuckDB, use the `ATTACH` command, for example with the bundled `sakila.db` file:
-```SQL
+```sql
 CALL sqlite_attach('sakila.db');
 ```
 
 The tables in the file are registered as views in DuckDB, you can list them with
-```SQL
+```sql
 PRAGMA show_tables;
 ```
 
 Then you can query those views normally using SQL, e.g. using the example queries from sakila-examples.sql
 
-```
+```sql
 SELECT cat.name category_name, 
        Sum(Ifnull(pay.amount, 0)) revenue 
 FROM   category cat 

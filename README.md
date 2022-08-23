@@ -46,16 +46,16 @@ sqlite3 sakila.db < sakila-examples.sql
 
 To build, type 
 ```
-make duckdb_release release
+make
 ```
 
 To run, run the bundled `duckdb` shell:
 ```
- ./duckdb/build/release/duckdb 
+ ./build/release/duckdb -unsigned
 ```
 
 Then, load the SQLite extension like so:
 ```SQL
-LOAD 'build/release/sqlite_scanner.duckdb_extension';
+LOAD 'build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
 ```
 

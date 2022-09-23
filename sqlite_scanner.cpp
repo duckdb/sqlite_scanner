@@ -168,6 +168,17 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bin
 
 	local_state.done = false;
 
+	// we may have leftover statements or connections from a previous call to this function
+	if (local_state.res) {
+		check_ok(sqlite3_finalize(local_state.res), local_state.db);
+		local_state.res = nullptr;
+	}
+
+	if (local_state.db) {
+		check_ok(sqlite3_close(local_state.db), local_state.db);
+		local_state.db = nullptr;
+	}
+
 	check_ok(sqlite3_open_v2(bind_data->file_name.c_str(), &local_state.db, SQLITE_OPEN_FLAGS, nullptr),
 	         local_state.db);
 

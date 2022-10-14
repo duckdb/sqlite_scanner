@@ -11,6 +11,8 @@
 #include "duckdb/common/types/date.hpp"
 #include "duckdb/common/types/timestamp.hpp"
 
+#include <cmath>
+
 using namespace duckdb;
 
 static int SQLITE_OPEN_FLAGS = SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_PRIVATECACHE;

@@ -19,6 +19,11 @@ jobs:
     - name: Install
       run: yum install -y gcc gcc-c++ wget make python3
 
+    - name: Install ninja-build
+      run: |
+        yum -y install https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/n/ninja-build-1.10.2-3.el7.x86_64.rpm
+        yum install -y ninja-build
+
     - name: Install recent git yay
       run: |
         yum -y install https://packages.endpointdev.com/rhel/7/os/x86_64/endpoint-repo.x86_64.rpm
@@ -50,6 +55,8 @@ jobs:
 
     - name: Build
       run: make release
+      env:
+        GEN: ninja
 
     - name: Make tpch test database
       run: |

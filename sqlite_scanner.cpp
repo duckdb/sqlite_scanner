@@ -259,17 +259,22 @@ static string SqliteTypeToString(int sqlite_type) {
 	}
 }
 
-static void AssertTypeMatches(int sqlite_column_type, int expected_type) {
+static void AssertTypeMatches(std::string &column_name, sqlite3_value *value, int sqlite_column_type,
+                              int expected_type) {
 	if (sqlite_column_type != expected_type) {
-		throw Exception(ExceptionType::MISMATCH_TYPE, "Invalid type in column: column declared as " +
-		                                                  SqliteTypeToString(expected_type) + ", found " +
-		                                                  SqliteTypeToString(sqlite_column_type) + " instead");
+		auto value_as_text = string((const char *)sqlite3_value_text(value));
+		auto message = "Invalid type in column \"" + column_name + "\": column was declared as " +
+		               SqliteTypeToString(expected_type) + ", found \"" + value_as_text + "\" of type \"" +
+		               SqliteTypeToString(sqlite_column_type) + "\" instead.";
+		throw Exception(ExceptionType::MISMATCH_TYPE, message);
 	}
 }
-static void AssertTypeIsFloatOrInteger(int sqlite_column_type) {
+static void AssertTypeIsFloatOrInteger(std::string &column_name, sqlite3_value *value, int sqlite_column_type) {
 	if (sqlite_column_type != SQLITE_FLOAT && sqlite_column_type != SQLITE_INTEGER) {
-		throw Exception(ExceptionType::MISMATCH_TYPE, "Invalid type in column: expected float or integer, found " +
-		                                                  SqliteTypeToString(sqlite_column_type) + " instead");
+		auto value_as_text = string((const char *)sqlite3_value_text(value));
+		auto message = "Invalid type in column \"" + column_name + "\": expected float or integer, found \"" +
+		               value_as_text + "\" of type \"" + SqliteTypeToString(sqlite_column_type) + "\" instead.";
+		throw Exception(ExceptionType::MISMATCH_TYPE, message);
 	}
 }
 
@@ -305,6 +310,7 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 				auto &out_vec = output.data[col_idx];
 				auto &mask = FlatVector::Validity(out_vec);
 				auto val = sqlite3_column_value(state.res, (int)col_idx);
+				auto column_name = string(sqlite3_column_name(state.res, (int)col_idx));
 
 				auto not_null = bind_data->not_nulls[state.column_ids[col_idx]];
 				auto sqlite_column_type = sqlite3_value_type(val);
@@ -318,7 +324,7 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 
 				switch (out_vec.GetType().id()) {
 				case LogicalTypeId::SMALLINT: {
-					AssertTypeMatches(sqlite_column_type, SQLITE_INTEGER);
+					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_INTEGER);
 					auto raw_int = sqlite3_value_int(val);
 					if (raw_int > INT16_MAX) {
 						throw std::runtime_error("int16 value out of range");
@@ -328,32 +334,32 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 				}
 
 				case LogicalTypeId::INTEGER:
-					AssertTypeMatches(sqlite_column_type, SQLITE_INTEGER);
+					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_INTEGER);
 					FlatVector::GetData<int32_t>(out_vec)[out_idx] = sqlite3_value_int(val);
 					break;
 
 				case LogicalTypeId::BIGINT:
-					AssertTypeMatches(sqlite_column_type, SQLITE_INTEGER);
+					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_INTEGER);
 					FlatVector::GetData<int64_t>(out_vec)[out_idx] = sqlite3_value_int64(val);
 					break;
 				case LogicalTypeId::DOUBLE:
-					AssertTypeIsFloatOrInteger(sqlite_column_type);
+					AssertTypeIsFloatOrInteger(column_name, val, sqlite_column_type);
 					FlatVector::GetData<double>(out_vec)[out_idx] = sqlite3_value_double(val);
 					break;
 				case LogicalTypeId::VARCHAR:
-					AssertTypeMatches(sqlite_column_type, SQLITE_TEXT);
+					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
 					FlatVector::GetData<string_t>(out_vec)[out_idx] = StringVector::AddString(
 					    out_vec, (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
 
 				case LogicalTypeId::DATE:
-					AssertTypeMatches(sqlite_column_type, SQLITE_TEXT);
+					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
 					FlatVector::GetData<date_t>(out_vec)[out_idx] =
 					    Date::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
 
 				case LogicalTypeId::TIMESTAMP:
-					AssertTypeMatches(sqlite_column_type, SQLITE_TEXT);
+					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
 					FlatVector::GetData<timestamp_t>(out_vec)[out_idx] =
 					    Timestamp::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
@@ -363,7 +369,7 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 					    out_vec, (const char *)sqlite3_value_blob(val), sqlite3_value_bytes(val));
 					break;
 				case LogicalTypeId::DECIMAL: {
-					AssertTypeIsFloatOrInteger(sqlite_column_type);
+					AssertTypeIsFloatOrInteger(column_name, val, sqlite_column_type);
 					auto &multiplier = bind_data->decimal_multipliers[state.column_ids[col_idx]];
 					switch (out_vec.GetType().InternalType()) {
 					case PhysicalType::INT16:

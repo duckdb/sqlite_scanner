@@ -4,6 +4,10 @@ defaults:
   run:
     shell: bash
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' || github.sha }}
+  cancel-in-progress: true
+
 jobs:
   linux:
     name: Linux (CentOS 7)
@@ -13,7 +17,7 @@ jobs:
     steps:
 
     - name: Install
-      run: yum install -y gcc gcc-c++ cmake make python3
+      run: yum install -y gcc gcc-c++ wget make python3
 
     - name: Install recent git yay
       run: |
@@ -26,9 +30,18 @@ jobs:
         python3 get-pip.py --user
         python3 -m pip install awscli --upgrade --user
 
+    - name: Install CMake
+      run: |
+        wget https://github.com/Kitware/CMake/releases/download/v3.24.2/cmake-3.24.2-linux-x86_64.sh
+        chmod +x cmake-3.24.2-linux-x86_64.sh
+        mkdir -p /opt/cmake
+        ./cmake-3.24.2-linux-x86_64.sh --skip-license --prefix=/opt/cmake
+        echo "/opt/cmake/bin" >> $GITHUB_PATH
+
     - uses: actions/checkout@v2
       with:
         fetch-depth: 0
+        submodules: 'recursive'
 
     - name: Update DuckDB submodule
       run: |

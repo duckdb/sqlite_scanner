@@ -31,7 +31,7 @@ struct SqliteBindData : public FunctionData {
 	vector<bool> not_nulls;
 	bool all_varchar = false;
 
-	idx_t rows_per_group = RowGroup::ROW_GROUP_SIZE;
+	idx_t rows_per_group = 100000;
 
 	unique_ptr<FunctionData> Copy() const override {
 		auto copy = make_unique<SqliteBindData>();

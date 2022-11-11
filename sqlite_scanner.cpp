@@ -10,6 +10,7 @@
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/common/types/date.hpp"
 #include "duckdb/common/types/timestamp.hpp"
+#include "duckdb/storage/table/row_group.hpp"
 
 #include <cmath>
 
@@ -26,9 +27,8 @@ struct SqliteBindData : public FunctionData {
 
 	idx_t max_rowid = 0;
 	vector<bool> not_nulls;
-	vector<uint64_t> decimal_multipliers;
 
-	idx_t rows_per_group = 100000;
+	idx_t rows_per_group = RowGroup::ROW_GROUP_SIZE;
 
 	unique_ptr<FunctionData> Copy() const override {
 		auto copy = make_unique<SqliteBindData>();
@@ -38,7 +38,6 @@ struct SqliteBindData : public FunctionData {
 		copy->types = types;
 		copy->max_rowid = max_rowid;
 		copy->not_nulls = not_nulls;
-		copy->decimal_multipliers = decimal_multipliers;
 		copy->rows_per_group = rows_per_group;
 
 		return move(copy);
@@ -48,7 +47,7 @@ struct SqliteBindData : public FunctionData {
 		auto other = (SqliteBindData &)other_p;
 		return other.file_name == file_name && other.table_name == table_name && other.names == names &&
 		       other.types == types && other.max_rowid == max_rowid && other.not_nulls == not_nulls &&
-		       other.decimal_multipliers == decimal_multipliers && other.rows_per_group == rows_per_group;
+		       other.rows_per_group == rows_per_group;
 	}
 };
 
@@ -85,6 +84,52 @@ static void check_ok(int rc, sqlite3 *db) {
 	}
 }
 
+static LogicalType SQLiteTypeToLogicalType(const string &sqlite_type) {
+	// type affinity rules are taken from here: https://www.sqlite.org/datatype3.html
+
+	// If the declared type contains the string "INT" then it is assigned INTEGER affinity.
+	if (StringUtil::Contains(sqlite_type, "int")) {
+		return LogicalType::BIGINT;
+	}
+	// If the declared type of the column contains any of the strings "CHAR", "CLOB", or "TEXT" then that column has
+	// TEXT affinity. Notice that the type VARCHAR contains the string "CHAR" and is thus assigned TEXT affinity.
+	if (StringUtil::Contains(sqlite_type, "char") || StringUtil::Contains(sqlite_type, "clob") || StringUtil::Contains(sqlite_type, "text")) {
+		return LogicalType::VARCHAR;
+	}
+
+	// If the declared type for a column contains the string "BLOB" or if no type is specified then the column has affinity BLOB.
+	if (StringUtil::Contains(sqlite_type, "blob") || sqlite_type.empty()) {
+		return LogicalType::BLOB;
+	}
+
+	// If the declared type for a column contains any of the strings "REAL", "FLOA", or "DOUB" then the column has REAL affinity.
+	if (StringUtil::Contains(sqlite_type, "real") || StringUtil::Contains(sqlite_type, "floa") || StringUtil::Contains(sqlite_type, "doub")) {
+		return LogicalType::DOUBLE;
+	}
+	// Otherwise, the affinity is NUMERIC.
+	// now numeric sounds simple, but it is rather complex:
+	// A column with NUMERIC affinity may contain values using all five storage classes.
+	// ...
+	// we add some more extra rules to try to be somewhat sane
+
+	if (sqlite_type == "date") {
+		return LogicalType::DATE;
+	}
+
+	// datetime, timestamp
+	if (StringUtil::Contains(sqlite_type, "time")) {
+		return LogicalType::TIMESTAMP;
+	}
+
+	// decimal, numeric
+	if (StringUtil::Contains(sqlite_type, "dec") || StringUtil::Contains(sqlite_type, "num")) {
+		return LogicalType::DOUBLE;
+	}
+
+	// alright, give up and fallback to varchar
+	return LogicalType::VARCHAR;
+}
+
 static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunctionBindInput &input,
                                            vector<LogicalType> &return_types, vector<string> &names) {
 
@@ -100,50 +145,19 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 	         db);
 
 	vector<bool> not_nulls;
-	vector<string> sqlite_types;
-
 	while (sqlite3_step(res) == SQLITE_ROW) {
 		auto sqlite_colname = string((const char *)sqlite3_column_text(res, 1));
-		auto sqlite_type = string((const char *)sqlite3_column_text(res, 2));
-		// Sqlite specialty, untyped columns
-		if (sqlite_type.empty()) {
-			sqlite_type = "BLOB";
-		}
-		if (sqlite_type == "BLOB SUB_TYPE TEXT") {
-			sqlite_type = "STRING"; // grr
-		}
+		auto sqlite_type = StringUtil::Lower(string((const char *)sqlite3_column_text(res, 2)));
 		auto not_null = sqlite3_column_int(res, 3);
-
+		StringUtil::Trim(sqlite_type);
 		names.push_back(sqlite_colname);
 		result->not_nulls.push_back((bool)not_null);
-		sqlite_types.push_back(sqlite_type);
+		return_types.push_back(SQLiteTypeToLogicalType(sqlite_type));
 	}
 	check_ok(sqlite3_finalize(res), db);
 
 	if (names.empty()) {
 		throw std::runtime_error("no columns for table " + result->table_name);
-	}
-
-	// we use the duckdb/postgres parser to parse these types, no need to
-	// duplicate
-	auto cast_string = StringUtil::Join(sqlite_types.data(), sqlite_types.size(), ", ",
-	                                    [](const string &st) { return StringUtil::Format("?::%s", st); });
-	auto cast_expressions = Parser::ParseExpressionList(cast_string);
-
-	result->decimal_multipliers.resize(names.size());
-	idx_t column_index = 0;
-	for (auto &e : cast_expressions) {
-		D_ASSERT(e->type == ExpressionType::OPERATOR_CAST);
-		auto &cast = (CastExpression &)*e;
-		return_types.push_back(cast.cast_type);
-
-		// precompute decimal conversion multipliers
-		if (cast.cast_type.id() == LogicalTypeId::DECIMAL) {
-			uint8_t width = 0, scale = 0;
-			cast.cast_type.GetDecimalProperties(width, scale);
-			result->decimal_multipliers[column_index] = (uint64_t)pow(10, scale);
-		}
-		column_index++;
 	}
 
 	check_ok(sqlite3_prepare_v2(db, StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", result->table_name).c_str(), -1,
@@ -323,21 +337,6 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 				}
 
 				switch (out_vec.GetType().id()) {
-				case LogicalTypeId::SMALLINT: {
-					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_INTEGER);
-					auto raw_int = sqlite3_value_int(val);
-					if (raw_int > INT16_MAX) {
-						throw std::runtime_error("int16 value out of range");
-					}
-					FlatVector::GetData<int16_t>(out_vec)[out_idx] = (int16_t)raw_int;
-					break;
-				}
-
-				case LogicalTypeId::INTEGER:
-					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_INTEGER);
-					FlatVector::GetData<int32_t>(out_vec)[out_idx] = sqlite3_value_int(val);
-					break;
-
 				case LogicalTypeId::BIGINT:
 					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_INTEGER);
 					FlatVector::GetData<int64_t>(out_vec)[out_idx] = sqlite3_value_int64(val);
@@ -351,42 +350,20 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 					FlatVector::GetData<string_t>(out_vec)[out_idx] = StringVector::AddString(
 					    out_vec, (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
-
 				case LogicalTypeId::DATE:
 					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
 					FlatVector::GetData<date_t>(out_vec)[out_idx] =
 					    Date::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
-
 				case LogicalTypeId::TIMESTAMP:
 					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
 					FlatVector::GetData<timestamp_t>(out_vec)[out_idx] =
 					    Timestamp::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
-
 				case LogicalTypeId::BLOB:
 					FlatVector::GetData<string_t>(out_vec)[out_idx] = StringVector::AddStringOrBlob(
 					    out_vec, (const char *)sqlite3_value_blob(val), sqlite3_value_bytes(val));
 					break;
-				case LogicalTypeId::DECIMAL: {
-					AssertTypeIsFloatOrInteger(column_name, val, sqlite_column_type);
-					auto &multiplier = bind_data->decimal_multipliers[state.column_ids[col_idx]];
-					switch (out_vec.GetType().InternalType()) {
-					case PhysicalType::INT16:
-						FlatVector::GetData<int16_t>(out_vec)[out_idx] = round(sqlite3_value_double(val) * multiplier);
-						break;
-					case PhysicalType::INT32:
-						FlatVector::GetData<int32_t>(out_vec)[out_idx] = round(sqlite3_value_double(val) * multiplier);
-						break;
-					case PhysicalType::INT64:
-						FlatVector::GetData<int64_t>(out_vec)[out_idx] = round(sqlite3_value_double(val) * multiplier);
-						break;
-
-					default:
-						throw std::runtime_error(TypeIdToString(out_vec.GetType().InternalType()));
-					}
-					break;
-				}
 				default:
 					throw std::runtime_error(out_vec.GetType().ToString());
 				}

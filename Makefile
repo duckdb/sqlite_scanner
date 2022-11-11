@@ -3,6 +3,10 @@
 all: release
 
 OSX_BUILD_UNIVERSAL_FLAG=
+GENERATOR=
+ifeq ($(GEN),ninja)
+	GENERATOR=-G "Ninja"
+endif
 ifeq (${OSX_BUILD_UNIVERSAL}, 1)
 	OSX_BUILD_UNIVERSAL_FLAG=-DOSX_BUILD_UNIVERSAL=1
 endif
@@ -19,13 +23,13 @@ clean:
 debug: pull
 	mkdir -p build/debug && \
 	cd build/debug && \
-	cmake -DCMAKE_BUILD_TYPE=Debug ${BUILD_FLAGS} ../../duckdb/CMakeLists.txt -DEXTERNAL_EXTENSION_DIRECTORIES=../../sqlite_scanner -B. && \
+	cmake $(GENERATOR) -DCMAKE_BUILD_TYPE=Debug ${BUILD_FLAGS} ../../duckdb/CMakeLists.txt -DEXTERNAL_EXTENSION_DIRECTORIES=../../sqlite_scanner -B. && \
 	cmake --build . --config Debug
 
 release: pull 
 	mkdir -p build/release && \
 	cd build/release && \
-	cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ${BUILD_FLAGS} ../../duckdb/CMakeLists.txt -DEXTERNAL_EXTENSION_DIRECTORIES=../../sqlite_scanner -B. && \
+	cmake $(GENERATOR) -DCMAKE_BUILD_TYPE=RelWithDebInfo ${BUILD_FLAGS} ../../duckdb/CMakeLists.txt -DEXTERNAL_EXTENSION_DIRECTORIES=../../sqlite_scanner -B. && \
 	cmake --build . --config Release
 
 test: release

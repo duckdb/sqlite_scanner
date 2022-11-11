@@ -7,3 +7,11 @@ CALL sqlite_attach('borked.db');
 # this has a string in an integer column
 statement error
 select * from a;
+----
+Mismatch Type Error: Invalid type in column "i": column was declared as integer, found "Hello" of type "text" instead.
+
+# this has a string in a double column
+statement error
+select * from b;
+----
+Mismatch Type Error: Invalid type in column "i": expected float or integer, found "hello" of type "text" instead.

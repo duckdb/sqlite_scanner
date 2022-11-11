@@ -1,0 +1,14 @@
+statement ok
+LOAD 'build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+# load from a database with a column that has no type defined
+statement ok
+CALL sqlite_attach('data/emptytype.db');
+
+query I
+select * from tbl;
+----
+42
+hello
+NULL
+0.5

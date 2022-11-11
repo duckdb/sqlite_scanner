@@ -1,0 +1,11 @@
+statement ok
+LOAD 'build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+CALL sqlite_attach('data/longvarchar.db');
+
+query I
+select * from tbl;
+----
+abc
+def

@@ -11,6 +11,8 @@
 #include "duckdb/common/types/date.hpp"
 #include "duckdb/common/types/timestamp.hpp"
 #include "duckdb/storage/table/row_group.hpp"
+#include "duckdb/main/client_context.hpp"
+#include "duckdb/main/config.hpp"
 
 #include <cmath>
 
@@ -27,6 +29,7 @@ struct SqliteBindData : public FunctionData {
 
 	idx_t max_rowid = 0;
 	vector<bool> not_nulls;
+	bool all_varchar = false;
 
 	idx_t rows_per_group = RowGroup::ROW_GROUP_SIZE;
 
@@ -148,6 +151,11 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 	                            &res, nullptr),
 	         db);
 
+	result->all_varchar = false;
+	Value sqlite_all_varchar;
+	if (context.TryGetCurrentSetting("sqlite_all_varchar", sqlite_all_varchar)) {
+		result->all_varchar = BooleanValue::Get(sqlite_all_varchar);
+	}
 	vector<bool> not_nulls;
 	while (sqlite3_step(res) == SQLITE_ROW) {
 		auto sqlite_colname = string((const char *)sqlite3_column_text(res, 1));
@@ -156,7 +164,7 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 		StringUtil::Trim(sqlite_type);
 		names.push_back(sqlite_colname);
 		result->not_nulls.push_back((bool)not_null);
-		return_types.push_back(SQLiteTypeToLogicalType(sqlite_type));
+		return_types.push_back(result->all_varchar ? LogicalType::VARCHAR : SQLiteTypeToLogicalType(sqlite_type));
 	}
 	check_ok(sqlite3_finalize(res), db);
 
@@ -350,7 +358,9 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 					FlatVector::GetData<double>(out_vec)[out_idx] = sqlite3_value_double(val);
 					break;
 				case LogicalTypeId::VARCHAR:
-					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
+					if (!bind_data->all_varchar) {
+						AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
+					}
 					FlatVector::GetData<string_t>(out_vec)[out_idx] = StringVector::AddString(
 					    out_vec, (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
@@ -484,6 +494,10 @@ DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
 
 	CreateTableFunctionInfo attach_info(attach_func);
 	catalog.CreateTableFunction(context, &attach_info);
+
+	auto &config = DBConfig::GetConfig(db);
+	config.AddExtensionOption("sqlite_all_varchar", "Load all SQLite columns as VARCHAR columns", LogicalType::BOOLEAN);
+
 
 	con.Commit();
 }

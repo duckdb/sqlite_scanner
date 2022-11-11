@@ -93,17 +93,21 @@ static LogicalType SQLiteTypeToLogicalType(const string &sqlite_type) {
 	}
 	// If the declared type of the column contains any of the strings "CHAR", "CLOB", or "TEXT" then that column has
 	// TEXT affinity. Notice that the type VARCHAR contains the string "CHAR" and is thus assigned TEXT affinity.
-	if (StringUtil::Contains(sqlite_type, "char") || StringUtil::Contains(sqlite_type, "clob") || StringUtil::Contains(sqlite_type, "text")) {
+	if (StringUtil::Contains(sqlite_type, "char") || StringUtil::Contains(sqlite_type, "clob") ||
+	    StringUtil::Contains(sqlite_type, "text")) {
 		return LogicalType::VARCHAR;
 	}
 
-	// If the declared type for a column contains the string "BLOB" or if no type is specified then the column has affinity BLOB.
+	// If the declared type for a column contains the string "BLOB" or if no type is specified then the column has
+	// affinity BLOB.
 	if (StringUtil::Contains(sqlite_type, "blob") || sqlite_type.empty()) {
 		return LogicalType::BLOB;
 	}
 
-	// If the declared type for a column contains any of the strings "REAL", "FLOA", or "DOUB" then the column has REAL affinity.
-	if (StringUtil::Contains(sqlite_type, "real") || StringUtil::Contains(sqlite_type, "floa") || StringUtil::Contains(sqlite_type, "doub")) {
+	// If the declared type for a column contains any of the strings "REAL", "FLOA", or "DOUB" then the column has REAL
+	// affinity.
+	if (StringUtil::Contains(sqlite_type, "real") || StringUtil::Contains(sqlite_type, "floa") ||
+	    StringUtil::Contains(sqlite_type, "doub")) {
 		return LogicalType::DOUBLE;
 	}
 	// Otherwise, the affinity is NUMERIC.

@@ -1,0 +1,20 @@
+statement ok
+LOAD 'build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+# load from a database with a numeric column that has mixed types
+
+# Invalid type in column "a": expected float or integer, found "hello" of type "text" instead.
+statement error
+select * from sqlite_scan('data/mixed_data_numeric.db', 'tbl');
+----
+hello
+
+statement ok
+SET sqlite_all_varchar=true
+
+query I
+select * from sqlite_scan('data/mixed_data_numeric.db', 'tbl');
+----
+42
+hello
+NULL

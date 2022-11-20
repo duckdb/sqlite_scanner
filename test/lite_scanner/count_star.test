@@ -1,0 +1,15 @@
+statement ok
+LOAD 'build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+CALL sqlite_attach('data/count.db');
+
+query I
+select count(*) from empty_tbl;
+----
+0
+
+query I
+select count(*) from mysql_databases;
+----
+10

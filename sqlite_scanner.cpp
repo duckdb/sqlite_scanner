@@ -195,7 +195,6 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bin
 	D_ASSERT(rowid_min <= rowid_max);
 
 	local_state.done = false;
-
 	// we may have leftover statements or connections from a previous call to this function
 	if (local_state.res) {
 		check_ok(sqlite3_finalize(local_state.res), local_state.db);
@@ -337,8 +336,8 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 				auto &mask = FlatVector::Validity(out_vec);
 				auto val = sqlite3_column_value(state.res, (int)col_idx);
 				auto column_name = string(sqlite3_column_name(state.res, (int)col_idx));
-
-				auto not_null = bind_data->not_nulls[state.column_ids[col_idx]];
+				auto col_id = state.column_ids[col_idx];
+				auto not_null = col_id == ((column_t) -1) ? true : bind_data->not_nulls[col_id];
 				auto sqlite_column_type = sqlite3_value_type(val);
 				if (sqlite_column_type == SQLITE_NULL) {
 					if (not_null) {

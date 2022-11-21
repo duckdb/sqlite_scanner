@@ -15,7 +15,8 @@ PRAGMA tpch(${i})
 
 endloop
 
-loop i 10 23
+
+loop i 10 15
 
 query I
 PRAGMA tpch(${i})
@@ -23,3 +24,21 @@ PRAGMA tpch(${i})
 <FILE>:duckdb/extension/tpch/dbgen/answers/sf0.1/q${i}.csv
 
 endloop
+
+loop i 16 23
+
+query I
+PRAGMA tpch(${i})
+----
+<FILE>:duckdb/extension/tpch/dbgen/answers/sf0.1/q${i}.csv
+
+endloop
+
+# run Q15 single-threaded: it is not deterministic when run on doubles with multi-threading enabled
+statement ok
+SET threads=1
+
+query I
+PRAGMA tpch(15)
+----
+<FILE>:duckdb/extension/tpch/dbgen/answers/sf0.1/q15.csv

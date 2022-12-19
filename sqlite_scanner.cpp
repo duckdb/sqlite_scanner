@@ -482,7 +482,7 @@ DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
 	Connection con(db);
 	con.BeginTransaction();
 	auto &context = *con.context;
-	auto &catalog = Catalog::GetCatalog(context);
+	auto &catalog = Catalog::GetSystemCatalog(context);
 
 	SqliteScanFunction sqlite_fun;
 	CreateTableFunctionInfo sqlite_info(sqlite_fun);

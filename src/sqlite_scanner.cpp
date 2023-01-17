@@ -213,19 +213,19 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 			}
 			for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
 				auto &out_vec = output.data[col_idx];
-				auto &mask = FlatVector::Validity(out_vec);
-				auto col_id = state.column_ids[col_idx];
-				auto val = stmt.GetValue<sqlite3_value *>(col_idx);
 				auto sqlite_column_type = stmt.GetType(col_idx);
 				if (sqlite_column_type == SQLITE_NULL) {
+					auto col_id = state.column_ids[col_idx];
 					auto not_null = col_id == ((column_t) -1) ? true : bind_data->not_nulls[col_id];
 					if (not_null) {
 						throw std::runtime_error("Column was declared as NOT NULL but got one anyway");
 					}
+					auto &mask = FlatVector::Validity(out_vec);
 					mask.Set(out_idx, false);
 					continue;
 				}
 
+				auto val = stmt.GetValue<sqlite3_value *>(col_idx);
 				switch (out_vec.GetType().id()) {
 				case LogicalTypeId::BIGINT:
 					stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_INTEGER, col_idx);

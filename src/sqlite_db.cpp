@@ -2,8 +2,6 @@
 
 namespace duckdb {
 
-static int SQLITE_OPEN_FLAGS = SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_PRIVATECACHE;
-
 SQLiteDB::SQLiteDB() : db(nullptr) {
 
 }
@@ -24,9 +22,15 @@ SQLiteDB &SQLiteDB::operator=(SQLiteDB &&other) noexcept {
 	return *this;
 }
 
-SQLiteDB SQLiteDB::Open(const string &path) {
+SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only) {
 	SQLiteDB result;
-	SQLiteUtils::Check(sqlite3_open_v2(path.c_str(), &result.db, SQLITE_OPEN_FLAGS, nullptr), result.db);
+	int flags = SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_PRIVATECACHE;
+	if (is_read_only) {
+		flags |= SQLITE_OPEN_READONLY;
+	} else {
+		flags |= SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
+	}
+	SQLiteUtils::Check(sqlite3_open_v2(path.c_str(), &result.db, flags, nullptr), result.db);
 	return result;
 }
 

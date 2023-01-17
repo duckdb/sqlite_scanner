@@ -1,0 +1,6 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH 'chinook.db' (TYPE SQLITE)
+

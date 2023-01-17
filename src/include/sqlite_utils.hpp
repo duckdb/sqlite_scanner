@@ -27,7 +27,7 @@ public:
 	sqlite3 *db;
 
 public:
-	static SQLiteDB Open(const string &path);
+	static SQLiteDB Open(const string &path, bool is_read_only = true);
 	SQLiteStatement Prepare(const string &query);
 
 	bool IsOpen();

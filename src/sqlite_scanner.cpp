@@ -1,24 +1,20 @@
-#ifndef DUCKDB_BUILD_LOADABLE_EXTENSION
-#define DUCKDB_BUILD_LOADABLE_EXTENSION
-#endif
 #include "duckdb.hpp"
 
-#include "sqlite3.h"
+#include "sqlite_utils.hpp"
+#include "sqlite_scanner.hpp"
 #include <stdint.h>
 #include "duckdb/parser/parser.hpp"
 #include "duckdb/parser/expression/cast_expression.hpp"
-#include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/common/types/date.hpp"
 #include "duckdb/common/types/timestamp.hpp"
 #include "duckdb/storage/table/row_group.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/config.hpp"
+#include "duckdb/storage/storage_extension.hpp"
 
 #include <cmath>
 
-using namespace duckdb;
-
-static int SQLITE_OPEN_FLAGS = SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_PRIVATECACHE;
+namespace duckdb {
 
 struct SqliteBindData : public FunctionData {
 	string file_name;
@@ -55,16 +51,12 @@ struct SqliteBindData : public FunctionData {
 };
 
 struct SqliteLocalState : public LocalTableFunctionState {
-	sqlite3 *db = nullptr;
-	sqlite3_stmt *res = nullptr;
+	SQLiteDB db;
+	SQLiteStatement stmt;
 	bool done = false;
 	vector<column_t> column_ids;
 
 	~SqliteLocalState() {
-		sqlite3_finalize(res);
-		sqlite3_close(db);
-		res = nullptr;
-		db = nullptr;
 	}
 };
 
@@ -81,62 +73,6 @@ struct SqliteGlobalState : public GlobalTableFunctionState {
 	}
 };
 
-static void check_ok(int rc, sqlite3 *db) {
-	if (rc != SQLITE_OK) {
-		throw std::runtime_error(string(sqlite3_errmsg(db)));
-	}
-}
-
-static LogicalType SQLiteTypeToLogicalType(const string &sqlite_type) {
-	// type affinity rules are taken from here: https://www.sqlite.org/datatype3.html
-
-	// If the declared type contains the string "INT" then it is assigned INTEGER affinity.
-	if (StringUtil::Contains(sqlite_type, "int")) {
-		return LogicalType::BIGINT;
-	}
-	// If the declared type of the column contains any of the strings "CHAR", "CLOB", or "TEXT" then that column has
-	// TEXT affinity. Notice that the type VARCHAR contains the string "CHAR" and is thus assigned TEXT affinity.
-	if (StringUtil::Contains(sqlite_type, "char") || StringUtil::Contains(sqlite_type, "clob") ||
-	    StringUtil::Contains(sqlite_type, "text")) {
-		return LogicalType::VARCHAR;
-	}
-
-	// If the declared type for a column contains the string "BLOB" or if no type is specified then the column has
-	// affinity BLOB.
-	if (StringUtil::Contains(sqlite_type, "blob") || sqlite_type.empty()) {
-		return LogicalType::BLOB;
-	}
-
-	// If the declared type for a column contains any of the strings "REAL", "FLOA", or "DOUB" then the column has REAL
-	// affinity.
-	if (StringUtil::Contains(sqlite_type, "real") || StringUtil::Contains(sqlite_type, "floa") ||
-	    StringUtil::Contains(sqlite_type, "doub")) {
-		return LogicalType::DOUBLE;
-	}
-	// Otherwise, the affinity is NUMERIC.
-	// now numeric sounds simple, but it is rather complex:
-	// A column with NUMERIC affinity may contain values using all five storage classes.
-	// ...
-	// we add some more extra rules to try to be somewhat sane
-
-	if (sqlite_type == "date") {
-		return LogicalType::DATE;
-	}
-
-	// datetime, timestamp
-	if (StringUtil::Contains(sqlite_type, "time")) {
-		return LogicalType::TIMESTAMP;
-	}
-
-	// decimal, numeric
-	if (StringUtil::Contains(sqlite_type, "dec") || StringUtil::Contains(sqlite_type, "num")) {
-		return LogicalType::DOUBLE;
-	}
-
-	// alright, give up and fallback to varchar
-	return LogicalType::VARCHAR;
-}
-
 static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunctionBindInput &input,
                                            vector<LogicalType> &return_types, vector<string> &names) {
 
@@ -144,12 +80,10 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 	result->file_name = input.inputs[0].GetValue<string>();
 	result->table_name = input.inputs[1].GetValue<string>();
 
-	sqlite3 *db;
-	sqlite3_stmt *res;
-	check_ok(sqlite3_open_v2(result->file_name.c_str(), &db, SQLITE_OPEN_FLAGS, nullptr), db);
-	check_ok(sqlite3_prepare_v2(db, StringUtil::Format("PRAGMA table_info(\"%s\")", result->table_name).c_str(), -1,
-	                            &res, nullptr),
-	         db);
+	SQLiteDB db;
+	SQLiteStatement stmt;
+	db = SQLiteDB::Open(result->file_name);
+	stmt = db.Prepare(StringUtil::Format("PRAGMA table_info(\"%s\")", result->table_name));
 
 	result->all_varchar = false;
 	Value sqlite_all_varchar;
@@ -157,31 +91,25 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 		result->all_varchar = BooleanValue::Get(sqlite_all_varchar);
 	}
 	vector<bool> not_nulls;
-	while (sqlite3_step(res) == SQLITE_ROW) {
-		auto sqlite_colname = string((const char *)sqlite3_column_text(res, 1));
-		auto sqlite_type = StringUtil::Lower(string((const char *)sqlite3_column_text(res, 2)));
-		auto not_null = sqlite3_column_int(res, 3);
+	while (stmt.Step()) {
+		auto sqlite_colname = stmt.GetValue<string>(1);
+		auto sqlite_type = StringUtil::Lower(stmt.GetValue<string>(2));
+		auto not_null = stmt.GetValue<int>(3);
 		StringUtil::Trim(sqlite_type);
 		names.push_back(sqlite_colname);
 		result->not_nulls.push_back((bool)not_null);
-		return_types.push_back(result->all_varchar ? LogicalType::VARCHAR : SQLiteTypeToLogicalType(sqlite_type));
+		return_types.push_back(result->all_varchar ? LogicalType::VARCHAR : SQLiteUtils::TypeToLogicalType(sqlite_type));
 	}
-	check_ok(sqlite3_finalize(res), db);
 
 	if (names.empty()) {
 		throw std::runtime_error("no columns for table " + result->table_name);
 	}
 
-	check_ok(sqlite3_prepare_v2(db, StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", result->table_name).c_str(), -1,
-	                            &res, nullptr),
-	         db);
-	if (sqlite3_step(res) != SQLITE_ROW) {
+	stmt = db.Prepare(StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", result->table_name));
+	if (!stmt.Step()) {
 		throw std::runtime_error("could not find max rowid?");
 	}
-	result->max_rowid = sqlite3_column_int64(res, 0);
-
-	check_ok(sqlite3_finalize(res), db);
-	check_ok(sqlite3_close(db), db);
+	result->max_rowid = stmt.GetValue<int64_t>(0);
 
 	result->names = names;
 	result->types = return_types;
@@ -196,19 +124,10 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bin
 
 	local_state.done = false;
 	// we may have leftover statements or connections from a previous call to this function
-	if (local_state.res) {
-		check_ok(sqlite3_finalize(local_state.res), local_state.db);
-		local_state.res = nullptr;
-	}
+	local_state.stmt.Close();
+	local_state.db.Close();
 
-	if (local_state.db) {
-		check_ok(sqlite3_close(local_state.db), local_state.db);
-		local_state.db = nullptr;
-	}
-
-	check_ok(sqlite3_open_v2(bind_data->file_name.c_str(), &local_state.db, SQLITE_OPEN_FLAGS, nullptr),
-	         local_state.db);
-
+	local_state.db = SQLiteDB::Open(bind_data->file_name.c_str());
 	auto col_names = StringUtil::Join(
 	    local_state.column_ids.data(), local_state.column_ids.size(), ", ", [&](const idx_t column_id) {
 		    return column_id == (column_t)-1 ? "ROWID" : '"' + bind_data->names[column_id] + '"';
@@ -217,7 +136,7 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bin
 	auto sql = StringUtil::Format("SELECT %s FROM \"%s\" WHERE ROWID BETWEEN %d AND %d", col_names,
 	                              bind_data->table_name, rowid_min, rowid_max);
 
-	check_ok(sqlite3_prepare_v2(local_state.db, sql.c_str(), -1, &local_state.res, nullptr), local_state.db);
+	local_state.stmt = local_state.db.Prepare(sql.c_str());
 }
 
 static unique_ptr<NodeStatistics> SqliteCardinality(ClientContext &context, const FunctionData *bind_data_p) {
@@ -267,42 +186,6 @@ static unique_ptr<GlobalTableFunctionState> SqliteInitGlobalState(ClientContext 
 	return move(result);
 }
 
-static string SqliteTypeToString(int sqlite_type) {
-	switch (sqlite_type) {
-	case SQLITE_ANY:
-		return "any";
-	case SQLITE_INTEGER:
-		return "integer";
-	case SQLITE_TEXT:
-		return "text";
-	case SQLITE_BLOB:
-		return "blob";
-	case SQLITE_FLOAT:
-		return "float";
-	default:
-		return "unknown";
-	}
-}
-
-static void AssertTypeMatches(std::string &column_name, sqlite3_value *value, int sqlite_column_type,
-                              int expected_type) {
-	if (sqlite_column_type != expected_type) {
-		auto value_as_text = string((const char *)sqlite3_value_text(value));
-		auto message = "Invalid type in column \"" + column_name + "\": column was declared as " +
-		               SqliteTypeToString(expected_type) + ", found \"" + value_as_text + "\" of type \"" +
-		               SqliteTypeToString(sqlite_column_type) + "\" instead.";
-		throw Exception(ExceptionType::MISMATCH_TYPE, message);
-	}
-}
-static void AssertTypeIsFloatOrInteger(std::string &column_name, sqlite3_value *value, int sqlite_column_type) {
-	if (sqlite_column_type != SQLITE_FLOAT && sqlite_column_type != SQLITE_INTEGER) {
-		auto value_as_text = string((const char *)sqlite3_value_text(value));
-		auto message = "Invalid type in column \"" + column_name + "\": expected float or integer, found \"" +
-		               value_as_text + "\" of type \"" + SqliteTypeToString(sqlite_column_type) + "\" instead.";
-		throw Exception(ExceptionType::MISMATCH_TYPE, message);
-	}
-}
-
 static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChunk &output) {
 	auto &state = (SqliteLocalState &)*data.local_state;
 	auto &gstate = (SqliteGlobalState &)*data.global_state;
@@ -321,25 +204,21 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 				output.SetCardinality(out_idx);
 				return;
 			}
-			auto rc = sqlite3_step(state.res);
-			if (rc == SQLITE_DONE) {
+			auto &stmt = state.stmt;
+			auto has_more = stmt.Step();
+			if (!has_more) {
 				state.done = true;
 				output.SetCardinality(out_idx);
 				return;
 			}
-			if (rc == SQLITE_ERROR) {
-				throw std::runtime_error(sqlite3_errmsg(state.db));
-			}
-			D_ASSERT(rc == SQLITE_ROW);
 			for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
 				auto &out_vec = output.data[col_idx];
 				auto &mask = FlatVector::Validity(out_vec);
-				auto val = sqlite3_column_value(state.res, (int)col_idx);
-				auto column_name = string(sqlite3_column_name(state.res, (int)col_idx));
 				auto col_id = state.column_ids[col_idx];
-				auto not_null = col_id == ((column_t) -1) ? true : bind_data->not_nulls[col_id];
-				auto sqlite_column_type = sqlite3_value_type(val);
+				auto val = stmt.GetValue<sqlite3_value *>(col_idx);
+				auto sqlite_column_type = stmt.GetType(col_idx);
 				if (sqlite_column_type == SQLITE_NULL) {
+					auto not_null = col_id == ((column_t) -1) ? true : bind_data->not_nulls[col_id];
 					if (not_null) {
 						throw std::runtime_error("Column was declared as NOT NULL but got one anyway");
 					}
@@ -349,27 +228,27 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 
 				switch (out_vec.GetType().id()) {
 				case LogicalTypeId::BIGINT:
-					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_INTEGER);
+					stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_INTEGER, col_idx);
 					FlatVector::GetData<int64_t>(out_vec)[out_idx] = sqlite3_value_int64(val);
 					break;
 				case LogicalTypeId::DOUBLE:
-					AssertTypeIsFloatOrInteger(column_name, val, sqlite_column_type);
+					stmt.CheckTypeIsFloatOrInteger(val, sqlite_column_type, col_idx);
 					FlatVector::GetData<double>(out_vec)[out_idx] = sqlite3_value_double(val);
 					break;
 				case LogicalTypeId::VARCHAR:
 					if (!bind_data->all_varchar) {
-						AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
+						stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_TEXT, col_idx);
 					}
 					FlatVector::GetData<string_t>(out_vec)[out_idx] = StringVector::AddString(
 					    out_vec, (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
 				case LogicalTypeId::DATE:
-					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
+					stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_TEXT, col_idx);
 					FlatVector::GetData<date_t>(out_vec)[out_idx] =
 					    Date::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
 				case LogicalTypeId::TIMESTAMP:
-					AssertTypeMatches(column_name, val, sqlite_column_type, SQLITE_TEXT);
+					stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_TEXT, col_idx);
 					FlatVector::GetData<timestamp_t>(out_vec)[out_idx] =
 					    Timestamp::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
@@ -404,16 +283,13 @@ SqliteStatistics(ClientContext &context, const FunctionData *bind_data_p,
 }
 */
 
-class SqliteScanFunction : public TableFunction {
-public:
-	SqliteScanFunction()
-	    : TableFunction("sqlite_scan", {LogicalType::VARCHAR, LogicalType::VARCHAR}, SqliteScan, SqliteBind,
-	                    SqliteInitGlobalState, SqliteInitLocalState) {
-		cardinality = SqliteCardinality;
-		to_string = SqliteToString;
-		projection_pushdown = true;
-	}
-};
+SqliteScanFunction::SqliteScanFunction()
+	: TableFunction("sqlite_scan", {LogicalType::VARCHAR, LogicalType::VARCHAR}, SqliteScan, SqliteBind,
+					SqliteInitGlobalState, SqliteInitLocalState) {
+	cardinality = SqliteCardinality;
+	to_string = SqliteToString;
+	projection_pushdown = true;
+}
 
 struct AttachFunctionData : public TableFunctionData {
 	AttachFunctionData() {
@@ -447,60 +323,30 @@ static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, D
 		return;
 	}
 
-	sqlite3 *db;
-	sqlite3_stmt *res;
-	check_ok(sqlite3_open_v2(data.file_name.c_str(), &db, SQLITE_OPEN_FLAGS, nullptr), db);
+	SQLiteDB db = SQLiteDB::Open(data.file_name);
 	auto dconn = Connection(context.db->GetDatabase(context));
-
 	{
-
-		check_ok(sqlite3_prepare_v2(db, "SELECT name FROM sqlite_master WHERE type='table'", -1, &res, nullptr), db);
-
-		while (sqlite3_step(res) == SQLITE_ROW) {
-			auto table_name = string((const char *)sqlite3_column_text(res, 0));
+		SQLiteStatement stmt = db.Prepare("SELECT name FROM sqlite_master WHERE type='table'");
+		while (stmt.Step()) {
+			auto table_name = stmt.GetValue<string>(0);
 
 			dconn.TableFunction("sqlite_scan", {Value(data.file_name), Value(table_name)})
 			    ->CreateView(table_name, data.overwrite, false);
 		}
-		check_ok(sqlite3_finalize(res), db);
 	}
 	{
-		check_ok(sqlite3_prepare_v2(db, "SELECT sql FROM sqlite_master WHERE type='view'", -1, &res, nullptr), db);
-
-		while (sqlite3_step(res) == SQLITE_ROW) {
-			auto view_sql = string((const char *)sqlite3_column_text(res, 0));
+		SQLiteStatement stmt = db.Prepare("SELECT sql FROM sqlite_master WHERE type='view'");
+		while (stmt.Step()) {
+			auto view_sql = stmt.GetValue<string>(0);
 			dconn.Query(view_sql);
 		}
-		check_ok(sqlite3_finalize(res), db);
 	}
-	check_ok(sqlite3_close(db), db);
 	data.finished = true;
 }
 
-extern "C" {
-DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
-	Connection con(db);
-	con.BeginTransaction();
-	auto &context = *con.context;
-	auto &catalog = Catalog::GetSystemCatalog(context);
-
-	SqliteScanFunction sqlite_fun;
-	CreateTableFunctionInfo sqlite_info(sqlite_fun);
-	catalog.CreateTableFunction(context, &sqlite_info);
-
-	TableFunction attach_func("sqlite_attach", {LogicalType::VARCHAR}, AttachFunction, AttachBind);
-	attach_func.named_parameters["overwrite"] = LogicalType::BOOLEAN;
-
-	CreateTableFunctionInfo attach_info(attach_func);
-	catalog.CreateTableFunction(context, &attach_info);
-
-	auto &config = DBConfig::GetConfig(db);
-	config.AddExtensionOption("sqlite_all_varchar", "Load all SQLite columns as VARCHAR columns", LogicalType::BOOLEAN);
-
-	con.Commit();
+SqliteAttachFunction::SqliteAttachFunction() :
+	TableFunction("sqlite_attach", {LogicalType::VARCHAR}, AttachFunction, AttachBind) {
+	named_parameters["overwrite"] = LogicalType::BOOLEAN;
 }
 
-DUCKDB_EXTENSION_API const char *sqlite_scanner_version() {
-	return DuckDB::LibraryVersion();
-}
 }

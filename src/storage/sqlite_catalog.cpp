@@ -33,7 +33,7 @@ SchemaCatalogEntry *SQLiteCatalog::GetSchema(CatalogTransaction transaction, con
 }
 
 void SQLiteCatalog::DropSchema(ClientContext &context, DropInfo *info) {
-	throw InternalException("DropSchema");
+	throw BinderException("SQLite databases do not support dropping schemas");
 }
 
 }

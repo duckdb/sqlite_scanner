@@ -61,11 +61,17 @@ public:
 	T GetValue(idx_t col) {
 		throw InternalException("Unsupported type for SQLiteStatement::GetValue");
 	}
+	template<class T>
+	void Bind(idx_t col, T value) {
+		throw InternalException("Unsupported type for SQLiteStatement::Bind");
+	}
 	int GetType(idx_t col);
 	bool IsOpen();
 	void Close();
 	void CheckTypeMatches(sqlite3_value *val, int sqlite_column_type, int expected_type, idx_t col_idx);
 	void CheckTypeIsFloatOrInteger(sqlite3_value *val, int sqlite_column_type, idx_t col_idx);
+	void ClearBindings();
+	void Reset();
 };
 
 template<>
@@ -77,6 +83,14 @@ int64_t SQLiteStatement::GetValue(idx_t col);
 template<>
 sqlite3_value * SQLiteStatement::GetValue(idx_t col);
 
+template<>
+void SQLiteStatement::Bind(idx_t col, int32_t value);
+template<>
+void SQLiteStatement::Bind(idx_t col, int64_t value);
+template<>
+void SQLiteStatement::Bind(idx_t col, double value);
+template<>
+void SQLiteStatement::Bind(idx_t col, string_t value);
 
 class SQLiteUtils {
 public:

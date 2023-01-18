@@ -28,6 +28,8 @@ public:
 	SQLiteDB &GetDB();
 	SQLiteTableEntry *GetTable(const string &table_name);
 
+	static SQLiteTransaction &Get(ClientContext &context, Catalog &catalog);
+
 private:
 	SQLiteCatalog &sqlite_catalog;
 	SQLiteDB db;

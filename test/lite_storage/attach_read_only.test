@@ -2,7 +2,7 @@ statement ok
 LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
 
 statement ok
-ATTACH 'chinook.db' (TYPE SQLITE)
+ATTACH 'chinook.db' (TYPE SQLITE, READ_ONLY)
 
 query III
 SELECT * FROM chinook.albums LIMIT 10;
@@ -17,3 +17,8 @@ SELECT * FROM chinook.albums LIMIT 10;
 8	Warner 25 Anos	6
 9	Plays Metallica By Four Cellos	7
 10	Audioslave	8
+
+statement error
+SELECT * FROM chinook.albumz
+----
+albums

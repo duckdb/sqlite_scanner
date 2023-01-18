@@ -2,6 +2,8 @@
 #include "storage/sqlite_table_entry.hpp"
 #include "storage/sqlite_transaction.hpp"
 #include "duckdb/catalog/dependency_list.hpp"
+#include "duckdb/parser/parsed_data/create_table_info.hpp"
+#include "duckdb/planner/parsed_data/bound_create_table_info.hpp"
 
 namespace duckdb {
 
@@ -9,13 +11,45 @@ SQLiteSchemaEntry::SQLiteSchemaEntry(Catalog *catalog) :
 	SchemaCatalogEntry(catalog, DEFAULT_SCHEMA, true) {
 }
 
-CatalogEntry *SQLiteSchemaEntry::AddEntryInternal(CatalogTransaction transaction, unique_ptr<StandardEntry> entry,
-							   OnCreateConflict on_conflict, DependencyList dependencies) {
-	throw InternalException("AddEntryInternal");
+SQLiteTransaction &GetSQLiteTransaction(CatalogTransaction transaction) {
+	if (!transaction.transaction) {
+		throw InternalException("No transaction!?");
+	}
+	return (SQLiteTransaction &) *transaction.transaction;
 }
+
+string GetCreateTableSQL(CreateTableInfo &info) {
+	string result;
+	result = "CREATE TABLE ";
+	result += KeywordHelper::WriteOptionallyQuoted(info.table);
+	result += "(";
+
+	bool first_column = true;
+	for(auto &col : info.columns.Logical()) {
+		if (col.Generated()) {
+			throw BinderException("SQLite does not support generated columns");
+		}
+		if (!first_column) {
+			result += ", ";
+		}
+		result += KeywordHelper::WriteOptionallyQuoted(col.GetName());
+		result += " ";
+		result += col.GetType().ToString();
+	}
+	result += ");";
+	// FIXME: constraints
+	// FIXME: more complex types
+	return result;
+}
+
 CatalogEntry *SQLiteSchemaEntry::CreateTable(CatalogTransaction transaction, BoundCreateTableInfo *info) {
-	throw InternalException("CreateTable");
+	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
+	auto &base_info = info->Base();
+	auto table_name = base_info.table;
+	sqlite_transaction.GetDB().Execute(GetCreateTableSQL(base_info));
+	return GetEntry(transaction, CatalogType::TABLE_ENTRY, table_name);
 }
+
 CatalogEntry *SQLiteSchemaEntry::CreateFunction(CatalogTransaction transaction, CreateFunctionInfo *info) {
 	throw InternalException("CreateFunction");
 }
@@ -23,7 +57,14 @@ void SQLiteSchemaEntry::Alter(ClientContext &context, AlterInfo *info) {
 	throw InternalException("Alter");
 }
 void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type, const std::function<void(CatalogEntry *)> &callback) {
-	throw InternalException("Scan");
+	if (type != CatalogType::TABLE_ENTRY) {
+		throw BinderException("Only tables are supported for now");
+	}
+	auto &transaction = SQLiteTransaction::Get(context, *catalog);
+	auto tables = transaction.GetDB().GetTables();
+	for(auto &table_name : tables) {
+		callback(GetEntry(GetCatalogTransaction(context), type, table_name));
+	}
 }
 void SQLiteSchemaEntry::Scan(CatalogType type, const std::function<void(CatalogEntry *)> &callback) {
 	throw InternalException("Scan");
@@ -31,18 +72,13 @@ void SQLiteSchemaEntry::Scan(CatalogType type, const std::function<void(CatalogE
 void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
 	throw InternalException("DropEntry");
 }
+
 CatalogEntry *SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type, const string &name) {
 	if (type != CatalogType::TABLE_ENTRY) {
 		throw BinderException("Only tables are supported for now");
 	}
-	if (!transaction.transaction) {
-		throw InternalException("No transaction!?");
-	}
-	auto sqlite_transaction = (SQLiteTransaction *) transaction.transaction;
-	return sqlite_transaction->GetTable(name);
-}
-SimilarCatalogEntry SQLiteSchemaEntry::GetSimilarEntry(CatalogTransaction transaction, CatalogType type, const string &name) {
-	throw InternalException("GetSimilarEntry");
+	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
+	return sqlite_transaction.GetTable(name);
 }
 
 }

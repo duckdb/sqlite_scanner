@@ -70,6 +70,13 @@ void SQLiteStatement::CheckTypeIsFloatOrInteger(sqlite3_value *val, int sqlite_c
 	}
 }
 
+void SQLiteStatement::ClearBindings() {
+	SQLiteUtils::Check(sqlite3_clear_bindings(stmt), db);
+}
+void SQLiteStatement::Reset() {
+	SQLiteUtils::Check(sqlite3_reset(stmt), db);
+}
+
 template<>
 string SQLiteStatement::GetValue(idx_t col) {
 	D_ASSERT(stmt);
@@ -92,6 +99,26 @@ template<>
 sqlite3_value * SQLiteStatement::GetValue(idx_t col) {
 	D_ASSERT(stmt);
 	return sqlite3_column_value(stmt, col);
+}
+
+template<>
+void SQLiteStatement::Bind(idx_t col, int32_t value) {
+	SQLiteUtils::Check(sqlite3_bind_int(stmt, col + 1, value), db);
+}
+
+template<>
+void SQLiteStatement::Bind(idx_t col, int64_t value) {
+	SQLiteUtils::Check(sqlite3_bind_int64(stmt, col + 1, value), db);
+}
+
+template<>
+void SQLiteStatement::Bind(idx_t col, double value) {
+	SQLiteUtils::Check(sqlite3_bind_double(stmt, col + 1, value), db);
+}
+
+template<>
+void SQLiteStatement::Bind(idx_t col, string_t value) {
+	SQLiteUtils::Check(sqlite3_bind_text(stmt, col + 1, value.GetDataUnsafe(), value.GetSize(), nullptr), db);
 }
 
 }

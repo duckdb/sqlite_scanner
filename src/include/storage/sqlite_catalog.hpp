@@ -36,6 +36,10 @@ public:
 	SQLiteSchemaEntry *GetMainSchema() {
 		return main_schema.get();
 	}
+
+	unique_ptr<PhysicalOperator> PlanInsert(ClientContext &context, LogicalInsert &op, unique_ptr<PhysicalOperator> plan) override;
+	unique_ptr<PhysicalOperator> PlanCreateTableAs(ClientContext &context, LogicalCreateTable &op, unique_ptr<PhysicalOperator> plan) override;
+
 private:
 	void DropSchema(ClientContext &context, DropInfo *info) override;
 

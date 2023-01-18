@@ -14,12 +14,6 @@ unique_ptr<BaseStatistics> SQLiteTableEntry::GetStatistics(ClientContext &contex
 	return nullptr;
 }
 
-//	string file_name;
-//	string table_name;
-//
-//	vector<string> names;
-//	vector<LogicalType> types;
-
 TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_ptr<FunctionData> &bind_data) {
 	auto result = make_unique<SqliteBindData>();
 	for(auto &col : columns.Logical()) {

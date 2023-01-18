@@ -27,13 +27,21 @@ SQLiteDB &SQLiteTransaction::GetDB() {
 	return db;
 }
 
+SQLiteTransaction &SQLiteTransaction::Get(ClientContext &context, Catalog &catalog) {
+	return (SQLiteTransaction &) Transaction::Get(context, catalog);
+}
+
 SQLiteTableEntry *SQLiteTransaction::GetTable(const string &table_name) {
 	auto entry = tables.find(table_name);
 	if (entry == tables.end()) {
-		// table not found - create a new table
+		// table catalog entry not found - look up table in main SQLite database
 		CreateTableInfo info(sqlite_catalog.GetMainSchema(), table_name);
 		// FIXME: all_varchar from config
 		db.GetTableInfo(table_name, info.columns, info.constraints, false);
+		if (info.columns.empty()) {
+			// table not found in SQLite database
+			return nullptr;
+		}
 
 		auto table = make_unique<SQLiteTableEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), info);
 		auto result = table.get();

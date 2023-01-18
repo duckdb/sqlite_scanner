@@ -2,6 +2,7 @@ add_library(
   sqlite_ext_storage
   OBJECT
     sqlite_catalog.cpp
+    sqlite_insert.cpp
     sqlite_table_entry.cpp
     sqlite_schema_entry.cpp
     sqlite_transaction.cpp

@@ -16,40 +16,6 @@
 
 namespace duckdb {
 
-struct SqliteBindData : public FunctionData {
-	string file_name;
-	string table_name;
-
-	vector<string> names;
-	vector<LogicalType> types;
-
-	idx_t max_rowid = 0;
-	vector<bool> not_nulls;
-	bool all_varchar = false;
-
-	idx_t rows_per_group = 100000;
-
-	unique_ptr<FunctionData> Copy() const override {
-		auto copy = make_unique<SqliteBindData>();
-		copy->file_name = file_name;
-		copy->table_name = table_name;
-		copy->names = names;
-		copy->types = types;
-		copy->max_rowid = max_rowid;
-		copy->not_nulls = not_nulls;
-		copy->rows_per_group = rows_per_group;
-
-		return move(copy);
-	}
-
-	bool Equals(const FunctionData &other_p) const override {
-		auto other = (SqliteBindData &)other_p;
-		return other.file_name == file_name && other.table_name == table_name && other.names == names &&
-		       other.types == types && other.max_rowid == max_rowid && other.not_nulls == not_nulls &&
-		       other.rows_per_group == rows_per_group;
-	}
-};
-
 struct SqliteLocalState : public LocalTableFunctionState {
 	SQLiteDB db;
 	SQLiteStatement stmt;
@@ -83,33 +49,26 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 	SQLiteDB db;
 	SQLiteStatement stmt;
 	db = SQLiteDB::Open(result->file_name);
-	stmt = db.Prepare(StringUtil::Format("PRAGMA table_info(\"%s\")", result->table_name));
+
+	ColumnList columns;
+	vector<unique_ptr<Constraint>> constraints;
 
 	result->all_varchar = false;
 	Value sqlite_all_varchar;
 	if (context.TryGetCurrentSetting("sqlite_all_varchar", sqlite_all_varchar)) {
 		result->all_varchar = BooleanValue::Get(sqlite_all_varchar);
 	}
-	vector<bool> not_nulls;
-	while (stmt.Step()) {
-		auto sqlite_colname = stmt.GetValue<string>(1);
-		auto sqlite_type = StringUtil::Lower(stmt.GetValue<string>(2));
-		auto not_null = stmt.GetValue<int>(3);
-		StringUtil::Trim(sqlite_type);
-		names.push_back(sqlite_colname);
-		result->not_nulls.push_back((bool)not_null);
-		return_types.push_back(result->all_varchar ? LogicalType::VARCHAR : SQLiteUtils::TypeToLogicalType(sqlite_type));
+	db.GetTableInfo(result->table_name, columns, constraints, result->all_varchar);
+	for(auto &column : columns.Logical()) {
+		names.push_back(column.GetName());
+		return_types.push_back(column.GetType());
 	}
 
 	if (names.empty()) {
 		throw std::runtime_error("no columns for table " + result->table_name);
 	}
 
-	stmt = db.Prepare(StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", result->table_name));
-	if (!stmt.Step()) {
-		throw std::runtime_error("could not find max rowid?");
-	}
-	result->max_rowid = stmt.GetValue<int64_t>(0);
+	result->max_rowid = db.GetMaxRowId(result->table_name);
 
 	result->names = names;
 	result->types = return_types;
@@ -215,11 +174,6 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 				auto &out_vec = output.data[col_idx];
 				auto sqlite_column_type = stmt.GetType(col_idx);
 				if (sqlite_column_type == SQLITE_NULL) {
-					auto col_id = state.column_ids[col_idx];
-					auto not_null = col_id == ((column_t) -1) ? true : bind_data->not_nulls[col_id];
-					if (not_null) {
-						throw std::runtime_error("Column was declared as NOT NULL but got one anyway");
-					}
 					auto &mask = FlatVector::Validity(out_vec);
 					mask.Set(out_idx, false);
 					continue;
@@ -326,10 +280,8 @@ static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, D
 	SQLiteDB db = SQLiteDB::Open(data.file_name);
 	auto dconn = Connection(context.db->GetDatabase(context));
 	{
-		SQLiteStatement stmt = db.Prepare("SELECT name FROM sqlite_master WHERE type='table'");
-		while (stmt.Step()) {
-			auto table_name = stmt.GetValue<string>(0);
-
+		auto tables = db.GetTables();
+		for(auto &table_name : tables) {
 			dconn.TableFunction("sqlite_scan", {Value(data.file_name), Value(table_name)})
 			    ->CreateView(table_name, data.overwrite, false);
 		}

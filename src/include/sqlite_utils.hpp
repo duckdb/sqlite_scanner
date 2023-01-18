@@ -6,6 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#pragma once
+
 #include "duckdb.hpp"
 #include "sqlite3.h"
 
@@ -27,8 +29,12 @@ public:
 	sqlite3 *db;
 
 public:
-	static SQLiteDB Open(const string &path, bool is_read_only = true);
+	static SQLiteDB Open(const string &path, bool is_read_only = true, bool is_shared = false);
 	SQLiteStatement Prepare(const string &query);
+	void Execute(const string &query);
+	vector<string> GetTables();
+	void GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints, bool all_varchar);
+	idx_t GetMaxRowId(const string &table_name);
 
 	bool IsOpen();
 	void Close();

@@ -199,7 +199,7 @@ SELECT * FROM rental LIMIT 10;
 
 # views
 query IIIIIIIII
-select * from customer_list limit 10;
+select * from customer_list order by 1 limit 10;
 ----
 1	MARY SMITH	1913 Hanoi Way	35200	 	Sasebo	Japan	active	1
 2	PATRICIA JOHNSON	1121 Loja Avenue	17886	 	San Bernardino	United States	active	1
@@ -212,23 +212,22 @@ select * from customer_list limit 10;
 9	MARGARET MOORE	613 Korolev Drive	45844	 	Masqat	Oman	active	2
 10	DOROTHY TAYLOR	1531 Sal Drive	53628	 	Esfahan	Iran	active	1
 
-# disagreement
-#query I
-#select * from film_list limit 10;
-#----
-#19	AMADEUS HOLY	A Emotional Display of a Pioneer And a Technical Writer who must Battle a Man in A Baloon	Action	0.99	113	PG	JOHNNY LOLLOBRIGIDA
-#19	AMADEUS HOLY	A Emotional Display of a Pioneer And a Technical Writer who must Battle a Man in A Baloon	Action	0.99	113	PG	JULIA MCQUEEN
-#19	AMADEUS HOLY	A Emotional Display of a Pioneer And a Technical Writer who must Battle a Man in A Baloon	Action	0.99	113	PG	VAL BOLGER
-#19	AMADEUS HOLY	A Emotional Display of a Pioneer And a Technical Writer who must Battle a Man in A Baloon	Action	0.99	113	PG	KIRK JOVOVICH
-#19	AMADEUS HOLY	A Emotional Display of a Pioneer And a Technical Writer who must Battle a Man in A Baloon	Action	0.99	113	PG	JAMES PITT
-#19	AMADEUS HOLY	A Emotional Display of a Pioneer And a Technical Writer who must Battle a Man in A Baloon	Action	0.99	113	PG	PENELOPE CRONYN
-#21	AMERICAN CIRCUS	A Insightful Drama of a Girl And a Astronaut who must Face a Database Administrator in A Shark Tank	Action	4.99	129	R	KEVIN BLOOM
-#21	AMERICAN CIRCUS	A Insightful Drama of a Girl And a Astronaut who must Face a Database Administrator in A Shark Tank	Action	4.99	129	R	RIP CRAWFORD
-#21	AMERICAN CIRCUS	A Insightful Drama of a Girl And a Astronaut who must Face a Database Administrator in A Shark Tank	Action	4.99	129	R	SIDNEY CROWE
-#21	AMERICAN CIRCUS	A Insightful Drama of a Girl And a Astronaut who must Face a Database Administrator in A Shark Tank	Action	4.99	129	R	WARREN JACKMAN
+query IIIIIIII
+select * from film_list order by all limit 10;
+----
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	CHRISTIAN GABLE
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	JOHNNY CAGE
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	LUCILLE TRACY
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	MARY KEITEL
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	MENA TEMPLE
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	OPRAH KILMER
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	PENELOPE GUINESS
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	ROCK DUKAKIS
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	SANDRA PECK
+1	ACADEMY DINOSAUR	A Epic Drama of a Feminist And a Mad Scientist who must Battle a Teacher in The Canadian Rockies	Documentary	0.99	86	PG	WARREN NOLTE
 
 query IIIIIIII
-select * from staff_list limit 10;
+select * from staff_list order by 1 limit 10;
 ----
 1	Mike Hillyer	23 Workhaven Lane	NULL	 	Lethbridge	Canada	1
 2	Jon Stephens	1411 Lillydale Drive	NULL	 	Woodridge	Australia	2

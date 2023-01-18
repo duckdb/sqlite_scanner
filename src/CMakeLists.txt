@@ -1,5 +1,7 @@
 include_directories(include)
 
+add_subdirectory(storage)
+
 add_library(
   sqlite_ext_library
   OBJECT

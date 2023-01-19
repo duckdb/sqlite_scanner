@@ -22,6 +22,9 @@ SQLiteTransaction &GetSQLiteTransaction(CatalogTransaction transaction) {
 string GetCreateTableSQL(CreateTableInfo &info) {
 	string result;
 	result = "CREATE TABLE ";
+	if (info.on_conflict == OnCreateConflict::IGNORE_ON_CONFLICT) {
+		result += "IF NOT EXISTS ";
+	}
 	result += KeywordHelper::WriteOptionallyQuoted(info.table);
 	result += "(";
 
@@ -47,6 +50,15 @@ CatalogEntry *SQLiteSchemaEntry::CreateTable(CatalogTransaction transaction, Bou
 	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
 	auto &base_info = info->Base();
 	auto table_name = base_info.table;
+	if (base_info.on_conflict == OnCreateConflict::REPLACE_ON_CONFLICT) {
+		// CREATE OR REPLACE - drop any existing entries first (if any)
+		DropInfo info;
+		info.type = CatalogType::TABLE_ENTRY;
+		info.name = table_name;
+		info.cascade = false;
+		info.if_exists = true;
+		DropEntry(transaction.GetContext(), &info);
+	}
 	sqlite_transaction.GetDB().Execute(GetCreateTableSQL(base_info));
 	return GetEntry(transaction, CatalogType::TABLE_ENTRY, table_name);
 }

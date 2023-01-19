@@ -4,6 +4,7 @@
 #include "duckdb/catalog/dependency_list.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
 #include "duckdb/planner/parsed_data/bound_create_table_info.hpp"
+#include "duckdb/parser/parsed_data/drop_info.hpp"
 
 namespace duckdb {
 
@@ -69,8 +70,18 @@ void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type, const std
 void SQLiteSchemaEntry::Scan(CatalogType type, const std::function<void(CatalogEntry *)> &callback) {
 	throw InternalException("Scan");
 }
-void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
-	throw InternalException("DropEntry");
+
+DropErrorType SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
+	if (info->type != CatalogType::TABLE_ENTRY) {
+		throw BinderException("Only tables are supported for now");
+	}
+	auto table = GetEntry(GetCatalogTransaction(context), info->type, info->name);
+	if (!table) {
+		return DropErrorType::ENTRY_DOES_NOT_EXIST;
+	}
+	auto &transaction = SQLiteTransaction::Get(context, *catalog);
+	transaction.DropTable(info->name, info->cascade);
+	return DropErrorType::SUCCESS;
 }
 
 CatalogEntry *SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type, const string &name) {

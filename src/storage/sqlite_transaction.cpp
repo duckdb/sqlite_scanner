@@ -52,4 +52,19 @@ SQLiteTableEntry *SQLiteTransaction::GetTable(const string &table_name) {
 	}
 }
 
+string GetDropSQL(const string &table_name, bool cascade) {
+	string result;
+	result = "DROP TABLE ";
+	result += KeywordHelper::WriteOptionallyQuoted(table_name);
+	if (cascade) {
+		result += " CASCADE";
+	}
+	return result;
+}
+
+void SQLiteTransaction::DropTable(const string &table_name, bool cascade) {
+	tables.erase(table_name);
+	db.Execute(GetDropSQL(table_name, cascade));
+}
+
 }

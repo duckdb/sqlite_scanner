@@ -27,6 +27,7 @@ public:
 
 	SQLiteDB &GetDB();
 	SQLiteTableEntry *GetTable(const string &table_name);
+	void DropTable(const string &table_name, bool cascade);
 
 	static SQLiteTransaction &Get(ClientContext &context, Catalog &catalog);
 

@@ -35,6 +35,7 @@ public:
 	vector<string> GetTables();
 	void GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints, bool all_varchar);
 	idx_t GetMaxRowId(const string &table_name);
+	bool ColumnExists(const string &table_name, const string &column_name);
 
 	bool IsOpen();
 	void Close();
@@ -70,7 +71,6 @@ public:
 	void Close();
 	void CheckTypeMatches(sqlite3_value *val, int sqlite_column_type, int expected_type, idx_t col_idx);
 	void CheckTypeIsFloatOrInteger(sqlite3_value *val, int sqlite_column_type, idx_t col_idx);
-	void ClearBindings();
 	void Reset();
 };
 
@@ -91,6 +91,8 @@ template<>
 void SQLiteStatement::Bind(idx_t col, double value);
 template<>
 void SQLiteStatement::Bind(idx_t col, string_t value);
+template<>
+void SQLiteStatement::Bind(idx_t col, nullptr_t value);
 
 class SQLiteUtils {
 public:

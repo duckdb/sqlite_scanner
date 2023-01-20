@@ -1,0 +1,22 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH '__TEST_DIR__/attach_types.db' AS s (TYPE SQLITE)
+
+statement ok
+CREATE TABLE s.types(i INTEGER, j BIGINT, k DOUBLE, l VARCHAR);
+
+statement ok
+INSERT INTO s.types VALUES (42, 84, 0.5, 'hello world this is my string');
+
+statement ok
+INSERT INTO s.types VALUES (NULL, NULL, NULL, NULL);
+
+query IIII
+SELECT * FROM s.types
+----
+42	84	0.5	hello world this is my string
+NULL	NULL	NULL	NULL
+
+# FIXME: test_all_types

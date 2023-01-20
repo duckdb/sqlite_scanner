@@ -7,8 +7,10 @@ ATTACH '__TEST_DIR__/attach_simple.db' AS simple (TYPE SQLITE)
 statement ok
 CREATE TABLE simple.test(i INTEGER);
 
-statement ok
+query I
 INSERT INTO simple.test VALUES (42);
+----
+1
 
 query I
 SELECT * FROM simple.test

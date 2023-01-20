@@ -7,6 +7,7 @@ SQLiteStatement::SQLiteStatement() : db(nullptr), stmt(nullptr) {
 }
 
 SQLiteStatement::SQLiteStatement(sqlite3 *db, sqlite3_stmt *stmt) : db(db), stmt(stmt) {
+	D_ASSERT(db);
 }
 
 SQLiteStatement::~SQLiteStatement() {
@@ -25,13 +26,16 @@ SQLiteStatement &SQLiteStatement::operator=(SQLiteStatement &&other) noexcept {
 }
 
 int SQLiteStatement::Step() {
+	D_ASSERT(db);
 	D_ASSERT(stmt);
 	auto rc = sqlite3_step(stmt);
-	if (rc == SQLITE_ERROR) {
-		throw std::runtime_error(string(sqlite3_errmsg(db)));
+	if (rc == SQLITE_ROW) {
+		return true;
 	}
-	D_ASSERT(rc == SQLITE_ROW || rc == SQLITE_DONE);
-	return rc == SQLITE_ROW;
+	if (rc == SQLITE_DONE) {
+		return false;
+	}
+	throw std::runtime_error(string(sqlite3_errmsg(db)));
 }
 int SQLiteStatement::GetType(idx_t col) {
 	D_ASSERT(stmt);
@@ -45,6 +49,7 @@ void SQLiteStatement::Close() {
 		return;
 	}
 	sqlite3_finalize(stmt);
+	db = nullptr;
 	stmt = nullptr;
 }
 
@@ -70,9 +75,6 @@ void SQLiteStatement::CheckTypeIsFloatOrInteger(sqlite3_value *val, int sqlite_c
 	}
 }
 
-void SQLiteStatement::ClearBindings() {
-	SQLiteUtils::Check(sqlite3_clear_bindings(stmt), db);
-}
 void SQLiteStatement::Reset() {
 	SQLiteUtils::Check(sqlite3_reset(stmt), db);
 }
@@ -119,6 +121,11 @@ void SQLiteStatement::Bind(idx_t col, double value) {
 template<>
 void SQLiteStatement::Bind(idx_t col, string_t value) {
 	SQLiteUtils::Check(sqlite3_bind_text(stmt, col + 1, value.GetDataUnsafe(), value.GetSize(), nullptr), db);
+}
+
+template<>
+void SQLiteStatement::Bind(idx_t col, nullptr_t value) {
+	SQLiteUtils::Check(sqlite3_bind_null(stmt, col + 1), db);
 }
 
 }

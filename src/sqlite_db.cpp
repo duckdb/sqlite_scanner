@@ -34,6 +34,7 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 		flags |= SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 	}
 	if (!is_shared) {
+		// FIXME: we should just make sure we are not re-using the same `sqlite3` object across threads
 		flags |= SQLITE_OPEN_NOMUTEX;
 	}
 	SQLiteUtils::Check(sqlite3_open_v2(path.c_str(), &result.db, flags, nullptr), result.db);
@@ -42,6 +43,7 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 
 SQLiteStatement SQLiteDB::Prepare(const string &query) {
 	SQLiteStatement stmt;
+	stmt.db = db;
 	SQLiteUtils::Check(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt.stmt, nullptr), db);
 	return stmt;
 }
@@ -105,6 +107,19 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 			constraints.push_back(make_unique<UniqueConstraint>(move(primary_keys), true));
 		}
 	}
+}
+
+bool SQLiteDB::ColumnExists(const string &table_name, const string &column_name) {
+	SQLiteStatement stmt;
+
+	stmt = Prepare(StringUtil::Format("PRAGMA table_info(\"%s\")", table_name));
+	while (stmt.Step()) {
+		auto sqlite_colname = stmt.GetValue<string>(1);
+		if (sqlite_colname == column_name) {
+			return true;
+		}
+	}
+	return false;
 }
 
 idx_t SQLiteDB::GetMaxRowId(const string &table_name) {

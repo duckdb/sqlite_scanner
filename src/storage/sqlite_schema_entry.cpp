@@ -5,6 +5,10 @@
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
 #include "duckdb/planner/parsed_data/bound_create_table_info.hpp"
 #include "duckdb/parser/parsed_data/drop_info.hpp"
+#include "duckdb/parser/constraints/list.hpp"
+#include "duckdb/common/unordered_set.hpp"
+#include "duckdb/parser/parsed_data/alter_info.hpp"
+#include "duckdb/parser/parsed_data/alter_table_info.hpp"
 
 namespace duckdb {
 
@@ -19,31 +23,9 @@ SQLiteTransaction &GetSQLiteTransaction(CatalogTransaction transaction) {
 	return (SQLiteTransaction &) *transaction.transaction;
 }
 
-string GetCreateTableSQL(CreateTableInfo &info) {
-	string result;
-	result = "CREATE TABLE ";
-	if (info.on_conflict == OnCreateConflict::IGNORE_ON_CONFLICT) {
-		result += "IF NOT EXISTS ";
-	}
-	result += KeywordHelper::WriteOptionallyQuoted(info.table);
-	result += "(";
-
-	bool first_column = true;
-	for(auto &col : info.columns.Logical()) {
-		if (col.Generated()) {
-			throw BinderException("SQLite does not support generated columns");
-		}
-		if (!first_column) {
-			result += ", ";
-		}
-		result += KeywordHelper::WriteOptionallyQuoted(col.GetName());
-		result += " ";
-		result += col.GetType().ToString();
-	}
-	result += ");";
-	// FIXME: constraints
-	// FIXME: more complex types
-	return result;
+string GetCreateTableSQL(Catalog *catalog, SchemaCatalogEntry *schema, CreateTableInfo &info) {
+	auto result = make_unique<SQLiteTableEntry>(catalog, schema, info);
+	return result->ToSQL();
 }
 
 CatalogEntry *SQLiteSchemaEntry::CreateTable(CatalogTransaction transaction, BoundCreateTableInfo *info) {
@@ -59,16 +41,84 @@ CatalogEntry *SQLiteSchemaEntry::CreateTable(CatalogTransaction transaction, Bou
 		info.if_exists = true;
 		DropEntry(transaction.GetContext(), &info);
 	}
-	sqlite_transaction.GetDB().Execute(GetCreateTableSQL(base_info));
+	sqlite_transaction.GetDB().Execute(GetCreateTableSQL(catalog, this, base_info));
 	return GetEntry(transaction, CatalogType::TABLE_ENTRY, table_name);
 }
 
 CatalogEntry *SQLiteSchemaEntry::CreateFunction(CatalogTransaction transaction, CreateFunctionInfo *info) {
 	throw InternalException("CreateFunction");
 }
-void SQLiteSchemaEntry::Alter(ClientContext &context, AlterInfo *info) {
-	throw InternalException("Alter");
+
+void SQLiteSchemaEntry::AlterTable(SQLiteTransaction &sqlite_transaction, RenameTableInfo &info) {
+	string sql = "ALTER TABLE ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.name);
+	sql += " RENAME TO ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.new_table_name);
+	sqlite_transaction.GetDB().Execute(sql);
 }
+
+void SQLiteSchemaEntry::AlterTable(SQLiteTransaction &sqlite_transaction, RenameColumnInfo &info) {
+	string sql = "ALTER TABLE ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.name);
+	sql += " RENAME COLUMN  ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.old_name);
+	sql += " TO ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.new_name);
+	sqlite_transaction.GetDB().Execute(sql);
+}
+
+void SQLiteSchemaEntry::AlterTable(SQLiteTransaction &sqlite_transaction, AddColumnInfo &info) {
+	if (info.if_column_not_exists) {
+		if (sqlite_transaction.GetDB().ColumnExists(info.name, info.new_column.GetName())) {
+			return;
+		}
+	}
+	string sql = "ALTER TABLE ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.name);
+	sql += " ADD COLUMN  ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.new_column.Name());
+	sql += " ";
+	sql += info.new_column.Type().ToString();
+	sqlite_transaction.GetDB().Execute(sql);
+}
+
+void SQLiteSchemaEntry::AlterTable(SQLiteTransaction &sqlite_transaction, RemoveColumnInfo &info) {
+	if (info.if_column_exists) {
+		if (!sqlite_transaction.GetDB().ColumnExists(info.name, info.removed_column)) {
+			return;
+		}
+	}
+	string sql = "ALTER TABLE ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.name);
+	sql += " DROP COLUMN  ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.removed_column);
+	sqlite_transaction.GetDB().Execute(sql);
+}
+
+void SQLiteSchemaEntry::Alter(ClientContext &context, AlterInfo *info) {
+	if (info->type != AlterType::ALTER_TABLE) {
+		throw BinderException("Only altering tables is supported for now");
+	}
+	auto &alter = (AlterTableInfo &) *info;
+	auto &transaction = SQLiteTransaction::Get(context, *catalog);
+	switch(alter.alter_table_type) {
+	case AlterTableType::RENAME_TABLE:
+		AlterTable(transaction, (RenameTableInfo &) alter);
+		break;
+	case AlterTableType::RENAME_COLUMN:
+		AlterTable(transaction, (RenameColumnInfo &) alter);
+		break;
+	case AlterTableType::ADD_COLUMN:
+		AlterTable(transaction, (AddColumnInfo &) alter);
+		break;
+	case AlterTableType::REMOVE_COLUMN:
+		AlterTable(transaction, (RemoveColumnInfo &) alter);
+		break;
+	default:
+		throw BinderException("Unsupported ALTER TABLE type - SQLite tables only support RENAME TABLE, RENAME COLUMN, ADD COLUMN and DROP COLUMN");
+	}
+}
+
 void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type, const std::function<void(CatalogEntry *)> &callback) {
 	if (type != CatalogType::TABLE_ENTRY) {
 		throw BinderException("Only tables are supported for now");

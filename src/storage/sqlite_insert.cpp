@@ -92,7 +92,6 @@ SinkResultType SQLiteInsert::Sink(ExecutionContext &context, GlobalSinkState &st
 		}
 		// execute and clear bindings
 		stmt.Step();
-		stmt.ClearBindings();
 		stmt.Reset();
 	}
 

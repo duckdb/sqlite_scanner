@@ -11,6 +11,7 @@
 #include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
 
 namespace duckdb {
+class SQLiteTransaction;
 
 class SQLiteSchemaEntry : public SchemaCatalogEntry {
 public:
@@ -24,6 +25,12 @@ public:
 	void Scan(CatalogType type, const std::function<void(CatalogEntry *)> &callback) override;
 	DropErrorType DropEntry(ClientContext &context, DropInfo *info) override;
 	CatalogEntry *GetEntry(CatalogTransaction transaction, CatalogType type, const string &name) override;
+
+private:
+	void AlterTable(SQLiteTransaction &transaction, RenameTableInfo &info);
+	void AlterTable(SQLiteTransaction &transaction, RenameColumnInfo &info);
+	void AlterTable(SQLiteTransaction &transaction, AddColumnInfo &info);
+	void AlterTable(SQLiteTransaction &transaction, RemoveColumnInfo &info);
 };
 
 }

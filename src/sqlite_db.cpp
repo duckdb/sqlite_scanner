@@ -42,6 +42,7 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 }
 
 SQLiteStatement SQLiteDB::Prepare(const string &query) {
+//	printf("%s\n", query.c_str());
 	SQLiteStatement stmt;
 	stmt.db = db;
 	SQLiteUtils::Check(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt.stmt, nullptr), db);

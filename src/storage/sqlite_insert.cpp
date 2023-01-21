@@ -9,8 +9,8 @@
 namespace duckdb {
 
 
-SQLiteInsert::SQLiteInsert(LogicalOperator &op, TableCatalogEntry *table) :
-	PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), schema(nullptr) {}
+SQLiteInsert::SQLiteInsert(LogicalOperator &op, TableCatalogEntry *table, physical_index_vector_t<idx_t> column_index_map_p) :
+	PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), schema(nullptr), column_index_map(move(column_index_map_p)) {}
 
 SQLiteInsert::SQLiteInsert(LogicalOperator &op, SchemaCatalogEntry *schema, unique_ptr<BoundCreateTableInfo> info) :
 	PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(nullptr), schema(schema), info(std::move(info)) {}
@@ -30,11 +30,39 @@ public:
 	idx_t insert_count;
 };
 
-string GetInsertSQL(SQLiteTableEntry *entry) {
+string GetInsertSQL(const SQLiteInsert &insert, SQLiteTableEntry *entry) {
 	string result;
 	result = "INSERT INTO " + KeywordHelper::WriteOptionallyQuoted(entry->name);
+	auto &columns = entry->GetColumns();
+	idx_t column_count;
+	if (!insert.column_index_map.empty()) {
+		column_count = 0;
+		result += " (";
+		vector<PhysicalIndex> column_indexes;
+		column_indexes.resize(columns.LogicalColumnCount(), PhysicalIndex(DConstants::INVALID_INDEX));
+		for(idx_t c = 0; c < insert.column_index_map.size(); c++) {
+			auto column_index = PhysicalIndex(c);
+			auto mapped_index = insert.column_index_map[column_index];
+			if (mapped_index == DConstants::INVALID_INDEX) {
+				// column not specified
+				continue;
+			}
+			column_indexes[mapped_index] = column_index;
+			column_count++;
+		}
+		for(idx_t c = 0; c < column_count; c++) {
+			if (c > 0) {
+				result += ", ";
+			}
+			auto &col = columns.GetColumn(column_indexes[c]);
+			result += KeywordHelper::WriteOptionallyQuoted(col.GetName());
+		}
+		result += ")";
+	} else {
+		column_count = columns.LogicalColumnCount();
+	}
 	result += " VALUES (";
-	for(idx_t i = 0; i < entry->GetColumns().LogicalColumnCount(); i++) {
+	for(idx_t i = 0; i < column_count; i++) {
 		if (i > 0) {
 			result += ", ";
 		}
@@ -53,7 +81,7 @@ unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &cont
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *insert_table->catalog);
 	auto result = make_unique<SQLiteInsertGlobalState>(context, insert_table);;
-	result->statement = transaction.GetDB().Prepare(GetInsertSQL(insert_table));
+	result->statement = transaction.GetDB().Prepare(GetInsertSQL(*this, insert_table));
 	return std::move(result);
 }
 
@@ -140,10 +168,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanInsert(ClientContext &context, L
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for insertion into SQLite table");
 	}
-	if (!op.column_index_map.empty()) {
-		throw BinderException("column indexes not yet supported for insertion into SQLite table");
-	}
-	auto insert = make_unique<SQLiteInsert>(op, op.table);
+	auto insert = make_unique<SQLiteInsert>(op, op.table, op.column_index_map);
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

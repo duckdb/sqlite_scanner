@@ -1,0 +1,22 @@
+
+
+# create sequence
+# use a non-existent sequence (nextval('s1.seq')
+# create a macro
+# create a schema
+# create a type
+# reference a non-existent schema
+# reference a non-existent type
+# reference a non-existent function
+# reference a non-existent window function
+
+
+statement error
+CREATE SCHEMA simple.s1
+----
+SQLite databases do not support creating new schemas
+
+statement error
+DROP SCHEMA simple.s1
+----
+SQLite databases do not support dropping schemas

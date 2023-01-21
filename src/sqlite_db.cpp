@@ -84,7 +84,7 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 	idx_t primary_key_index = idx_t(-1);
 	vector<string> primary_keys;
 
-	stmt = Prepare(StringUtil::Format("PRAGMA table_info(\"%s\")", table_name));
+	stmt = Prepare(StringUtil::Format("PRAGMA table_info(\"%s\")", SQLiteUtils::SanitizeIdentifier(table_name)));
 	while (stmt.Step()) {
 		auto cid = stmt.GetValue<int>(0);
 		auto sqlite_colname = stmt.GetValue<string>(1);
@@ -124,7 +124,7 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 bool SQLiteDB::ColumnExists(const string &table_name, const string &column_name) {
 	SQLiteStatement stmt;
 
-	stmt = Prepare(StringUtil::Format("PRAGMA table_info(\"%s\")", table_name));
+	stmt = Prepare(StringUtil::Format("PRAGMA table_info(\"%s\")", SQLiteUtils::SanitizeIdentifier(table_name)));
 	while (stmt.Step()) {
 		auto sqlite_colname = stmt.GetValue<string>(1);
 		if (sqlite_colname == column_name) {
@@ -136,7 +136,7 @@ bool SQLiteDB::ColumnExists(const string &table_name, const string &column_name)
 
 idx_t SQLiteDB::GetMaxRowId(const string &table_name) {
 	SQLiteStatement stmt;
-	stmt = Prepare(StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", table_name));
+	stmt = Prepare(StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", SQLiteUtils::SanitizeIdentifier(table_name)));
 	if (!stmt.Step()) {
 		throw std::runtime_error("could not find max rowid?");
 	}

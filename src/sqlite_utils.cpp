@@ -24,6 +24,11 @@ string SQLiteUtils::TypeToString(int sqlite_type) {
 		return "unknown";
 	}
 }
+
+string SQLiteUtils::SanitizeIdentifier(const string &table_name) {
+	return StringUtil::Replace(table_name, "\"", "\"\"");
+}
+
 LogicalType SQLiteUtils::TypeToLogicalType(const string &sqlite_type) {
 	// type affinity rules are taken from here: https://www.sqlite.org/datatype3.html
 

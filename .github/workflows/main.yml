@@ -64,7 +64,7 @@ jobs:
         sqlite3 tpch.db < tpch-create.sqlite
 
     - name: Test
-      run: ./build/release/test/unittest --test-dir . "[lite_scanner]"
+      run: ./build/release/test/unittest --test-dir .
 
     - uses: actions/upload-artifact@v2
       with:
@@ -94,7 +94,7 @@ jobs:
         sqlite3 tpch.db < tpch-create.sqlite
 
     - name: Test
-      run: ./build/release/test/Release/unittest.exe --test-dir . "[lite_scanner]"
+      run: ./build/release/test/Release/unittest.exe --test-dir .
 
     - uses: actions/upload-artifact@v2
       with:

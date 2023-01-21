@@ -22,3 +22,13 @@ statement error
 SELECT * FROM chinook.albumz
 ----
 albums
+
+statement error
+CREATE TABLE chinook.test(i INTEGER)
+----
+read-only mode
+
+statement error
+INSERT INTO chinook.albums VALUES (NULL, NULL, NULL);
+----
+read-only mode

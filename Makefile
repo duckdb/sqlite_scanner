@@ -33,7 +33,7 @@ release: pull
 	cmake --build . --config Release
 
 test: release
-	./build/release/test/unittest --test-dir . "[lite_scanner]"
+	./build/release/test/unittest --test-dir .
 
 format:
 	cp duckdb/.clang-format .

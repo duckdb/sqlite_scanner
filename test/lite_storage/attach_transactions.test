@@ -1,0 +1,44 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH '__TEST_DIR__/attach_transactions.db' AS s (TYPE SQLITE)
+
+
+# roll back create table
+statement ok
+BEGIN
+
+statement ok
+CREATE TABLE s.test(i INTEGER);
+
+statement ok
+ROLLBACK
+
+statement error
+SELECT * FROM s.test
+----
+Table with name test does not exist
+
+statement ok
+CREATE TABLE s.test(i INTEGER);
+
+# roll back insert
+statement ok
+BEGIN
+
+statement ok
+INSERT INTO s.test VALUES (42)
+
+# FIXME: scan needs to re-use same database instead of re-connecting when in a transaction
+query I
+SELECT * FROM s.test
+----
+42
+
+statement ok
+ROLLBACK
+
+query I
+SELECT * FROM s.test
+----

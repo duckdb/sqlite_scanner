@@ -90,11 +90,11 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bin
 	local_state.db = SQLiteDB::Open(bind_data->file_name.c_str());
 	auto col_names = StringUtil::Join(
 	    local_state.column_ids.data(), local_state.column_ids.size(), ", ", [&](const idx_t column_id) {
-		    return column_id == (column_t)-1 ? "ROWID" : '"' + bind_data->names[column_id] + '"';
+		    return column_id == (column_t)-1 ? "ROWID" : '"' + SQLiteUtils::SanitizeIdentifier(bind_data->names[column_id]) + '"';
 	    });
 
 	auto sql = StringUtil::Format("SELECT %s FROM \"%s\" WHERE ROWID BETWEEN %d AND %d", col_names,
-	                              bind_data->table_name, rowid_min, rowid_max);
+	                              SQLiteUtils::SanitizeIdentifier(bind_data->table_name), rowid_min, rowid_max);
 
 	local_state.stmt = local_state.db.Prepare(sql.c_str());
 }

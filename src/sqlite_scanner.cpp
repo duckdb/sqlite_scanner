@@ -1,6 +1,7 @@
 #include "duckdb.hpp"
 
-#include "sqlite_utils.hpp"
+#include "sqlite_db.hpp"
+#include "sqlite_stmt.hpp"
 #include "sqlite_scanner.hpp"
 #include <stdint.h>
 #include "duckdb/parser/parser.hpp"

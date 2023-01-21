@@ -5,6 +5,8 @@
 #include "duckdb/planner/operator/logical_create_table.hpp"
 #include "storage/sqlite_table_entry.hpp"
 #include "duckdb/planner/parsed_data/bound_create_table_info.hpp"
+#include "sqlite_db.hpp"
+#include "sqlite_stmt.hpp"
 
 namespace duckdb {
 
@@ -111,7 +113,7 @@ SinkResultType SQLiteInsert::Sink(ExecutionContext &context, GlobalSinkState &st
 					stmt.Bind<double>(c, FlatVector::GetData<double>(col)[r]);
 					break;
 				case LogicalTypeId::VARCHAR:
-					stmt.Bind<string_t>(c, FlatVector::GetData<string_t>(col)[r]);
+					stmt.BindText(c, FlatVector::GetData<string_t>(col)[r]);
 					break;
 				default:
 					throw InternalException("Unsupported type for SQLite insert");

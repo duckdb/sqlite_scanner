@@ -1,0 +1,38 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH '__TEST_DIR__/attach_describe.db' AS s1 (TYPE SQLITE)
+
+statement ok
+CREATE TABLE s1.test(i BIGINT PRIMARY KEY, j BIGINT DEFAULT 42);
+
+query IIIIII
+DESCRIBE s1.test
+----
+i	BIGINT	YES	NULL	NULL	NULL
+j	BIGINT	YES	NULL	42	NULL
+
+query ITTTTT
+PRAGMA table_info('s1.test');
+----
+0	i	BIGINT	0	NULL	1
+1	j	BIGINT	0	42	0
+
+# more complex default
+statement ok
+CREATE TABLE s1.test2(s VARCHAR DEFAULT 'hello, '||'world');
+
+query ITTTTT
+PRAGMA table_info('s1.test2');
+----
+0	s	VARCHAR	false	('hello, ' || 'world')	false
+
+# DEFAULT in INSERT
+statement ok
+INSERT INTO s1.test2 VALUES (DEFAULT);
+
+query I
+SELECT * FROM s1.test2
+----
+hello, world

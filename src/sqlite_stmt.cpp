@@ -1,4 +1,5 @@
-#include "sqlite_utils.hpp"
+#include "sqlite_stmt.hpp"
+#include "sqlite_db.hpp"
 
 namespace duckdb {
 
@@ -82,7 +83,11 @@ void SQLiteStatement::Reset() {
 template<>
 string SQLiteStatement::GetValue(idx_t col) {
 	D_ASSERT(stmt);
-	return string((char *)sqlite3_column_text(stmt, col));
+	auto ptr = sqlite3_column_text(stmt, col);
+	if (!ptr) {
+		return string();
+	}
+	return string((char *) ptr);
 }
 
 template<>
@@ -118,8 +123,7 @@ void SQLiteStatement::Bind(idx_t col, double value) {
 	SQLiteUtils::Check(sqlite3_bind_double(stmt, col + 1, value), db);
 }
 
-template<>
-void SQLiteStatement::Bind(idx_t col, string_t value) {
+void SQLiteStatement::BindText(idx_t col, const string_t &value) {
 	SQLiteUtils::Check(sqlite3_bind_text(stmt, col + 1, value.GetDataUnsafe(), value.GetSize(), nullptr), db);
 }
 

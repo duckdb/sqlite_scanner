@@ -1,7 +1,10 @@
-#include "sqlite_utils.hpp"
 #include "duckdb/parser/constraints/not_null_constraint.hpp"
 #include "duckdb/parser/constraints/unique_constraint.hpp"
+#include "duckdb/parser/expression/constant_expression.hpp"
 #include "duckdb/parser/column_list.hpp"
+#include "duckdb/parser/parser.hpp"
+#include "sqlite_db.hpp"
+#include "sqlite_stmt.hpp"
 
 namespace duckdb {
 
@@ -87,11 +90,19 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 		auto sqlite_colname = stmt.GetValue<string>(1);
 		auto sqlite_type = StringUtil::Lower(stmt.GetValue<string>(2));
 		auto not_null = stmt.GetValue<int>(3);
+		auto default_value = stmt.GetValue<string>(4);
 		auto pk = stmt.GetValue<int>(5);
 		StringUtil::Trim(sqlite_type);
 		auto column_type = all_varchar ? LogicalType::VARCHAR : SQLiteUtils::TypeToLogicalType(sqlite_type);
 
 		ColumnDefinition column(move(sqlite_colname), move(column_type));
+		if (!default_value.empty()) {
+			auto expressions = Parser::ParseExpressionList(default_value);
+			if (expressions.empty()) {
+				throw InternalException("Expression list is empty");
+			}
+			column.SetDefaultValue(move(expressions[0]));
+		}
 		columns.AddColumn(move(column));
 		if (not_null) {
 			constraints.push_back(make_unique<NotNullConstraint>(LogicalIndex(cid)));

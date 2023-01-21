@@ -9,8 +9,8 @@
 #pragma once
 
 #include "duckdb/transaction/transaction.hpp"
-#include "sqlite_utils.hpp"
 #include "duckdb/common/case_insensitive_map.hpp"
+#include "sqlite_db.hpp"
 
 namespace duckdb {
 class SQLiteCatalog;

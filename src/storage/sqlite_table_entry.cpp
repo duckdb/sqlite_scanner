@@ -7,7 +7,8 @@
 namespace duckdb {
 
 SQLiteTableEntry::SQLiteTableEntry(Catalog *catalog, SchemaCatalogEntry *schema, CreateTableInfo &info) :
-   TableCatalogEntry(catalog, schema, info) {}
+   TableCatalogEntry(catalog, schema, info) {
+}
 
 
 unique_ptr<BaseStatistics> SQLiteTableEntry::GetStatistics(ClientContext &context, column_t column_id) {

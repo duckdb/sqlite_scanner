@@ -1,4 +1,8 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
 
+statement ok
+ATTACH '__TEST_DIR__/attach_catalog.db' AS s (TYPE SQLITE)
 
 # create sequence
 # use a non-existent sequence (nextval('s1.seq')
@@ -12,11 +16,11 @@
 
 
 statement error
-CREATE SCHEMA simple.s1
+CREATE SCHEMA s.s1
 ----
 SQLite databases do not support creating new schemas
 
 statement error
-DROP SCHEMA simple.s1
+DROP SCHEMA s.s1
 ----
 SQLite databases do not support dropping schemas

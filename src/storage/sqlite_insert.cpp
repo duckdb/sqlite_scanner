@@ -26,7 +26,6 @@ public:
 	    : insert_count(0) {
 	}
 
-	mutex lock;
 	SQLiteTableEntry *table;
 	SQLiteStatement statement;
 	idx_t insert_count;

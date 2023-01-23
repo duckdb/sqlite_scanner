@@ -12,15 +12,14 @@
 
 namespace duckdb {
 
-SQLiteSchemaEntry::SQLiteSchemaEntry(Catalog *catalog) :
-	SchemaCatalogEntry(catalog, DEFAULT_SCHEMA, true) {
+SQLiteSchemaEntry::SQLiteSchemaEntry(Catalog *catalog) : SchemaCatalogEntry(catalog, DEFAULT_SCHEMA, true) {
 }
 
 SQLiteTransaction &GetSQLiteTransaction(CatalogTransaction transaction) {
 	if (!transaction.transaction) {
 		throw InternalException("No transaction!?");
 	}
-	return (SQLiteTransaction &) *transaction.transaction;
+	return (SQLiteTransaction &)*transaction.transaction;
 }
 
 string GetCreateTableSQL(Catalog *catalog, SchemaCatalogEntry *schema, CreateTableInfo &info) {
@@ -99,33 +98,36 @@ void SQLiteSchemaEntry::Alter(ClientContext &context, AlterInfo *info) {
 	if (info->type != AlterType::ALTER_TABLE) {
 		throw BinderException("Only altering tables is supported for now");
 	}
-	auto &alter = (AlterTableInfo &) *info;
+	auto &alter = (AlterTableInfo &)*info;
 	auto &transaction = SQLiteTransaction::Get(context, *catalog);
-	switch(alter.alter_table_type) {
+	switch (alter.alter_table_type) {
 	case AlterTableType::RENAME_TABLE:
-		AlterTable(transaction, (RenameTableInfo &) alter);
+		AlterTable(transaction, (RenameTableInfo &)alter);
 		break;
 	case AlterTableType::RENAME_COLUMN:
-		AlterTable(transaction, (RenameColumnInfo &) alter);
+		AlterTable(transaction, (RenameColumnInfo &)alter);
 		break;
 	case AlterTableType::ADD_COLUMN:
-		AlterTable(transaction, (AddColumnInfo &) alter);
+		AlterTable(transaction, (AddColumnInfo &)alter);
 		break;
 	case AlterTableType::REMOVE_COLUMN:
-		AlterTable(transaction, (RemoveColumnInfo &) alter);
+		AlterTable(transaction, (RemoveColumnInfo &)alter);
 		break;
 	default:
-		throw BinderException("Unsupported ALTER TABLE type - SQLite tables only support RENAME TABLE, RENAME COLUMN, ADD COLUMN and DROP COLUMN");
+		throw BinderException("Unsupported ALTER TABLE type - SQLite tables only support RENAME TABLE, RENAME COLUMN, "
+		                      "ADD COLUMN and DROP COLUMN");
 	}
+	transaction.ClearTableEntry(info->name);
 }
 
-void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type, const std::function<void(CatalogEntry *)> &callback) {
+void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type,
+                             const std::function<void(CatalogEntry *)> &callback) {
 	if (type != CatalogType::TABLE_ENTRY) {
 		throw BinderException("Only tables are supported for now");
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *catalog);
 	auto tables = transaction.GetDB().GetTables();
-	for(auto &table_name : tables) {
+	for (auto &table_name : tables) {
 		callback(GetEntry(GetCatalogTransaction(context), type, table_name));
 	}
 }
@@ -133,17 +135,16 @@ void SQLiteSchemaEntry::Scan(CatalogType type, const std::function<void(CatalogE
 	throw InternalException("Scan");
 }
 
-DropErrorType SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
+void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
 	if (info->type != CatalogType::TABLE_ENTRY) {
 		throw BinderException("Only tables are supported for now");
 	}
 	auto table = GetEntry(GetCatalogTransaction(context), info->type, info->name);
 	if (!table) {
-		return DropErrorType::ENTRY_DOES_NOT_EXIST;
+		throw InternalException("Failed to drop entry \"%s\" - could not find entry", info->name);
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *catalog);
 	transaction.DropTable(info->name, info->cascade);
-	return DropErrorType::SUCCESS;
 }
 
 CatalogEntry *SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type, const string &name) {
@@ -154,4 +155,4 @@ CatalogEntry *SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, Catalo
 	return sqlite_transaction.GetTable(name);
 }
 
-}
+} // namespace duckdb

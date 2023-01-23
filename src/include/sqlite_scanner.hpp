@@ -11,6 +11,7 @@
 #include "duckdb.hpp"
 
 namespace duckdb {
+class SQLiteDB;
 
 struct SqliteBindData : public TableFunctionData {
 	string file_name;
@@ -22,7 +23,8 @@ struct SqliteBindData : public TableFunctionData {
 	idx_t max_rowid = 0;
 	bool all_varchar = false;
 
-	idx_t rows_per_group = 100000;
+	idx_t rows_per_group = 122880;
+	SQLiteDB *global_db;
 };
 
 class SqliteScanFunction : public TableFunction {
@@ -35,4 +37,4 @@ public:
 	SqliteAttachFunction();
 };
 
-}
+} // namespace duckdb

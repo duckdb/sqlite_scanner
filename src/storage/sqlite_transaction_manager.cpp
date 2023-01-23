@@ -2,8 +2,8 @@
 
 namespace duckdb {
 
-SQLiteTransactionManager::SQLiteTransactionManager(AttachedDatabase &db_p, SQLiteCatalog &sqlite_catalog) : TransactionManager(db_p),
-																				 sqlite_catalog(sqlite_catalog) {
+SQLiteTransactionManager::SQLiteTransactionManager(AttachedDatabase &db_p, SQLiteCatalog &sqlite_catalog)
+    : TransactionManager(db_p), sqlite_catalog(sqlite_catalog) {
 }
 
 Transaction *SQLiteTransactionManager::StartTransaction(ClientContext &context) {
@@ -15,21 +15,20 @@ Transaction *SQLiteTransactionManager::StartTransaction(ClientContext &context) 
 }
 
 string SQLiteTransactionManager::CommitTransaction(ClientContext &context, Transaction *transaction) {
-	auto sqlite_transaction = (SQLiteTransaction *) transaction;
+	auto sqlite_transaction = (SQLiteTransaction *)transaction;
 	sqlite_transaction->Commit();
 	transactions.erase(transaction);
 	return string();
 }
 
 void SQLiteTransactionManager::RollbackTransaction(Transaction *transaction) {
-	auto sqlite_transaction = (SQLiteTransaction *) transaction;
+	auto sqlite_transaction = (SQLiteTransaction *)transaction;
 	sqlite_transaction->Rollback();
 	transactions.erase(transaction);
 }
-
 
 void SQLiteTransactionManager::Checkpoint(ClientContext &context, bool force) {
 	throw InternalException("Checkpoint");
 }
 
-}
+} // namespace duckdb

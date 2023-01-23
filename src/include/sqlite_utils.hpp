@@ -21,4 +21,4 @@ public:
 	static string SanitizeIdentifier(const string &table_name);
 };
 
-}
+} // namespace duckdb

@@ -7,7 +7,6 @@ ATTACH ':memory:' AS mem (TYPE SQLITE)
 statement ok
 CREATE TABLE mem.integers(i INTEGER)
 
-# FIXME: need to re-use same in-memory database
 statement ok
 INSERT INTO mem.integers VALUES (42)
 

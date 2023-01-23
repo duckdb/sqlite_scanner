@@ -53,5 +53,4 @@ public:
 	string ParamsToString() const override;
 };
 
-
-}
+} // namespace duckdb

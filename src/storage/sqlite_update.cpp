@@ -8,16 +8,16 @@
 
 namespace duckdb {
 
-SQLiteUpdate::SQLiteUpdate(LogicalOperator &op, TableCatalogEntry &table, vector<PhysicalIndex> columns_p) :
-	PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), columns(move(columns_p)) {}
+SQLiteUpdate::SQLiteUpdate(LogicalOperator &op, TableCatalogEntry &table, vector<PhysicalIndex> columns_p)
+    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), columns(move(columns_p)) {
+}
 
 //===--------------------------------------------------------------------===//
 // States
 //===--------------------------------------------------------------------===//
 class SQLiteUpdateGlobalState : public GlobalSinkState {
 public:
-	explicit SQLiteUpdateGlobalState(SQLiteTableEntry &table)
-	    : table(table), update_count(0) {
+	explicit SQLiteUpdateGlobalState(SQLiteTableEntry &table) : table(table), update_count(0) {
 	}
 
 	SQLiteTableEntry &table;
@@ -29,7 +29,7 @@ string GetUpdateSQL(SQLiteTableEntry &table, const vector<PhysicalIndex> &index)
 	string result;
 	result = "UPDATE " + KeywordHelper::WriteOptionallyQuoted(table.name);
 	result += " SET ";
-	for(idx_t i = 0; i < index.size(); i++) {
+	for (idx_t i = 0; i < index.size(); i++) {
 		if (i > 0) {
 			result += ", ";
 		}
@@ -42,7 +42,7 @@ string GetUpdateSQL(SQLiteTableEntry &table, const vector<PhysicalIndex> &index)
 }
 
 unique_ptr<GlobalSinkState> SQLiteUpdate::GetGlobalSinkState(ClientContext &context) const {
-	auto &sqlite_table = (SQLiteTableEntry &) table;
+	auto &sqlite_table = (SQLiteTableEntry &)table;
 
 	auto &transaction = SQLiteTransaction::Get(context, *sqlite_table.catalog);
 	auto result = make_unique<SQLiteUpdateGlobalState>(sqlite_table);
@@ -54,17 +54,17 @@ unique_ptr<GlobalSinkState> SQLiteUpdate::GetGlobalSinkState(ClientContext &cont
 // Sink
 //===--------------------------------------------------------------------===//
 SinkResultType SQLiteUpdate::Sink(ExecutionContext &context, GlobalSinkState &state_p, LocalSinkState &lstate,
-					DataChunk &input) const {
-	auto &gstate = (SQLiteUpdateGlobalState &) state_p;
+                                  DataChunk &input) const {
+	auto &gstate = (SQLiteUpdateGlobalState &)state_p;
 
 	input.Flatten();
 	auto &row_identifiers = input.data[input.ColumnCount() - 1];
 	auto row_data = FlatVector::GetData<row_t>(row_identifiers);
 	auto &stmt = gstate.statement;
 	auto update_columns = input.ColumnCount() - 1;
-	for(idx_t r = 0; r < input.size(); r++) {
+	for (idx_t r = 0; r < input.size(); r++) {
 		// bind the SET values
-		for(idx_t c = 0; c < update_columns; c++) {
+		for (idx_t c = 0; c < update_columns; c++) {
 			auto &col = input.data[c];
 			stmt.BindValue(col, c, r);
 		}
@@ -90,7 +90,7 @@ unique_ptr<GlobalSourceState> SQLiteUpdate::GetGlobalSourceState(ClientContext &
 }
 
 void SQLiteUpdate::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
-                             LocalSourceState &lstate) const {
+                           LocalSourceState &lstate) const {
 	auto &state = (SQLiteUpdateSourceState &)gstate;
 	auto &insert_gstate = (SQLiteUpdateGlobalState &)*sink_state;
 	if (state.finished) {
@@ -115,11 +115,12 @@ string SQLiteUpdate::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-unique_ptr<PhysicalOperator> SQLiteCatalog::PlanUpdate(ClientContext &context, LogicalUpdate &op, unique_ptr<PhysicalOperator> plan) {
+unique_ptr<PhysicalOperator> SQLiteCatalog::PlanUpdate(ClientContext &context, LogicalUpdate &op,
+                                                       unique_ptr<PhysicalOperator> plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for updates of a SQLite table");
 	}
-	for(auto &expr : op.expressions) {
+	for (auto &expr : op.expressions) {
 		if (expr->type == ExpressionType::VALUE_DEFAULT) {
 			throw BinderException("SET DEFAULT is not yet supported for updates of a SQLite table");
 		}
@@ -129,4 +130,4 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanUpdate(ClientContext &context, L
 	return std::move(insert);
 }
 
-}
+} // namespace duckdb

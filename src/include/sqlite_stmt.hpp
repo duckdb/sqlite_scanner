@@ -29,11 +29,11 @@ public:
 
 public:
 	int Step();
-	template<class T>
+	template <class T>
 	T GetValue(idx_t col) {
 		throw InternalException("Unsupported type for SQLiteStatement::GetValue");
 	}
-	template<class T>
+	template <class T>
 	void Bind(idx_t col, T value) {
 		throw InternalException("Unsupported type for SQLiteStatement::Bind");
 	}
@@ -47,22 +47,22 @@ public:
 	void Reset();
 };
 
-template<>
+template <>
 string SQLiteStatement::GetValue(idx_t col);
-template<>
+template <>
 int SQLiteStatement::GetValue(idx_t col);
-template<>
+template <>
 int64_t SQLiteStatement::GetValue(idx_t col);
-template<>
-sqlite3_value * SQLiteStatement::GetValue(idx_t col);
+template <>
+sqlite3_value *SQLiteStatement::GetValue(idx_t col);
 
-template<>
+template <>
 void SQLiteStatement::Bind(idx_t col, int32_t value);
-template<>
+template <>
 void SQLiteStatement::Bind(idx_t col, int64_t value);
-template<>
+template <>
 void SQLiteStatement::Bind(idx_t col, double value);
-template<>
+template <>
 void SQLiteStatement::Bind(idx_t col, nullptr_t value);
 
-}
+} // namespace duckdb

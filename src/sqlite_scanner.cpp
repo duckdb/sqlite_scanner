@@ -18,10 +18,11 @@
 namespace duckdb {
 
 struct SqliteLocalState : public LocalTableFunctionState {
-	SQLiteDB db;
+	SQLiteDB *db;
 	SQLiteStatement stmt;
 	bool done = false;
 	vector<column_t> column_ids;
+	SQLiteDB owned_db;
 
 	~SqliteLocalState() {
 	}
@@ -60,7 +61,7 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 		result->all_varchar = BooleanValue::Get(sqlite_all_varchar);
 	}
 	db.GetTableInfo(result->table_name, columns, constraints, result->all_varchar);
-	for(auto &column : columns.Logical()) {
+	for (auto &column : columns.Logical()) {
 		names.push_back(column.GetName());
 		return_types.push_back(column.GetType());
 	}
@@ -74,7 +75,7 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 	result->names = names;
 	result->types = return_types;
 
-	return move(result);
+	return std::move(result);
 }
 
 static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bind_data, SqliteLocalState &local_state,
@@ -85,18 +86,28 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bin
 	local_state.done = false;
 	// we may have leftover statements or connections from a previous call to this function
 	local_state.stmt.Close();
-	local_state.db.Close();
+	if (!local_state.db) {
+		local_state.owned_db = SQLiteDB::Open(bind_data->file_name.c_str());
+		local_state.db = &local_state.owned_db;
+	}
 
-	local_state.db = SQLiteDB::Open(bind_data->file_name.c_str());
 	auto col_names = StringUtil::Join(
 	    local_state.column_ids.data(), local_state.column_ids.size(), ", ", [&](const idx_t column_id) {
-		    return column_id == (column_t)-1 ? "ROWID" : '"' + SQLiteUtils::SanitizeIdentifier(bind_data->names[column_id]) + '"';
+		    return column_id == (column_t)-1 ? "ROWID"
+		                                     : '"' + SQLiteUtils::SanitizeIdentifier(bind_data->names[column_id]) + '"';
 	    });
 
-	auto sql = StringUtil::Format("SELECT %s FROM \"%s\" WHERE ROWID BETWEEN %d AND %d", col_names,
-	                              SQLiteUtils::SanitizeIdentifier(bind_data->table_name), rowid_min, rowid_max);
-
-	local_state.stmt = local_state.db.Prepare(sql.c_str());
+	auto sql =
+	    StringUtil::Format("SELECT %s FROM \"%s\"", col_names, SQLiteUtils::SanitizeIdentifier(bind_data->table_name));
+	if (bind_data->rows_per_group != idx_t(-1)) {
+		// we are scanning a subset of the rows - generate a WHERE clause based on the rowid
+		auto where_clause = StringUtil::Format(" WHERE ROWID BETWEEN %d AND %d", rowid_min, rowid_max);
+		sql += where_clause;
+	} else {
+		// we are scanning the entire table - no need for a WHERE clause
+		D_ASSERT(rowid_min == 0);
+	}
+	local_state.stmt = local_state.db->Prepare(sql.c_str());
 }
 
 static unique_ptr<NodeStatistics> SqliteCardinality(ClientContext &context, const FunctionData *bind_data_p) {
@@ -109,6 +120,9 @@ static unique_ptr<NodeStatistics> SqliteCardinality(ClientContext &context, cons
 static idx_t SqliteMaxThreads(ClientContext &context, const FunctionData *bind_data_p) {
 	D_ASSERT(bind_data_p);
 	auto bind_data = (const SqliteBindData *)bind_data_p;
+	if (bind_data->global_db) {
+		return 1;
+	}
 	return bind_data->max_rowid / bind_data->rows_per_group;
 }
 
@@ -129,10 +143,11 @@ static bool SqliteParallelStateNext(ClientContext &context, const FunctionData *
 
 static unique_ptr<LocalTableFunctionState>
 SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, GlobalTableFunctionState *global_state) {
-
+	auto bind_data = (const SqliteBindData *)input.bind_data;
 	auto &gstate = (SqliteGlobalState &)*global_state;
 	auto result = make_unique<SqliteLocalState>();
 	result->column_ids = input.column_ids;
+	result->db = bind_data->global_db;
 	if (!SqliteParallelStateNext(context.client, input.bind_data, *result, gstate)) {
 		result->done = true;
 	}
@@ -239,8 +254,8 @@ SqliteStatistics(ClientContext &context, const FunctionData *bind_data_p,
 */
 
 SqliteScanFunction::SqliteScanFunction()
-	: TableFunction("sqlite_scan", {LogicalType::VARCHAR, LogicalType::VARCHAR}, SqliteScan, SqliteBind,
-					SqliteInitGlobalState, SqliteInitLocalState) {
+    : TableFunction("sqlite_scan", {LogicalType::VARCHAR, LogicalType::VARCHAR}, SqliteScan, SqliteBind,
+                    SqliteInitGlobalState, SqliteInitLocalState) {
 	cardinality = SqliteCardinality;
 	to_string = SqliteToString;
 	projection_pushdown = true;
@@ -282,7 +297,7 @@ static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, D
 	auto dconn = Connection(context.db->GetDatabase(context));
 	{
 		auto tables = db.GetTables();
-		for(auto &table_name : tables) {
+		for (auto &table_name : tables) {
 			dconn.TableFunction("sqlite_scan", {Value(data.file_name), Value(table_name)})
 			    ->CreateView(table_name, data.overwrite, false);
 		}
@@ -297,9 +312,9 @@ static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, D
 	data.finished = true;
 }
 
-SqliteAttachFunction::SqliteAttachFunction() :
-	TableFunction("sqlite_attach", {LogicalType::VARCHAR}, AttachFunction, AttachBind) {
+SqliteAttachFunction::SqliteAttachFunction()
+    : TableFunction("sqlite_attach", {LogicalType::VARCHAR}, AttachFunction, AttachBind) {
 	named_parameters["overwrite"] = LogicalType::BOOLEAN;
 }
 
-}
+} // namespace duckdb

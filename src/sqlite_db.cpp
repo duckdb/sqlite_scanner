@@ -9,7 +9,6 @@
 namespace duckdb {
 
 SQLiteDB::SQLiteDB() : db(nullptr) {
-
 }
 
 SQLiteDB::SQLiteDB(sqlite3 *db) : db(db) {
@@ -44,8 +43,14 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 	return result;
 }
 
+bool SQLiteDB::InMemory() {
+	if (!db) {
+		throw InternalException("SQLiteDB::InMemory called without a database active");
+	}
+	return sqlite3_db_filename(db, "main") == nullptr;
+}
+
 SQLiteStatement SQLiteDB::Prepare(const string &query) {
-//	printf("%s\n", query.c_str());
 	SQLiteStatement stmt;
 	stmt.db = db;
 	SQLiteUtils::Check(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt.stmt, nullptr), db);
@@ -78,7 +83,8 @@ vector<string> SQLiteDB::GetTables() {
 	return result;
 }
 
-void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints, bool all_varchar) {
+void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints,
+                            bool all_varchar) {
 	SQLiteStatement stmt;
 
 	idx_t primary_key_index = idx_t(-1);
@@ -143,4 +149,4 @@ idx_t SQLiteDB::GetMaxRowId(const string &table_name) {
 	return stmt.GetValue<int64_t>(0);
 }
 
-}
+} // namespace duckdb

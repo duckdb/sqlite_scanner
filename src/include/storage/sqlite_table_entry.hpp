@@ -22,4 +22,4 @@ public:
 	TableFunction GetScanFunction(ClientContext &context, unique_ptr<FunctionData> &bind_data) override;
 };
 
-}
+} // namespace duckdb

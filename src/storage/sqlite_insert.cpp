@@ -10,20 +10,23 @@
 
 namespace duckdb {
 
+SQLiteInsert::SQLiteInsert(LogicalOperator &op, TableCatalogEntry *table,
+                           physical_index_vector_t<idx_t> column_index_map_p)
+    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), schema(nullptr),
+      column_index_map(move(column_index_map_p)) {
+}
 
-SQLiteInsert::SQLiteInsert(LogicalOperator &op, TableCatalogEntry *table, physical_index_vector_t<idx_t> column_index_map_p) :
-	PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), schema(nullptr), column_index_map(move(column_index_map_p)) {}
-
-SQLiteInsert::SQLiteInsert(LogicalOperator &op, SchemaCatalogEntry *schema, unique_ptr<BoundCreateTableInfo> info) :
-	PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(nullptr), schema(schema), info(std::move(info)) {}
+SQLiteInsert::SQLiteInsert(LogicalOperator &op, SchemaCatalogEntry *schema, unique_ptr<BoundCreateTableInfo> info)
+    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(nullptr), schema(schema),
+      info(std::move(info)) {
+}
 
 //===--------------------------------------------------------------------===//
 // States
 //===--------------------------------------------------------------------===//
 class SQLiteInsertGlobalState : public GlobalSinkState {
 public:
-	explicit SQLiteInsertGlobalState(ClientContext &context, SQLiteTableEntry *table)
-	    : insert_count(0) {
+	explicit SQLiteInsertGlobalState(ClientContext &context, SQLiteTableEntry *table) : insert_count(0) {
 	}
 
 	SQLiteTableEntry *table;
@@ -41,7 +44,7 @@ string GetInsertSQL(const SQLiteInsert &insert, SQLiteTableEntry *entry) {
 		result += " (";
 		vector<PhysicalIndex> column_indexes;
 		column_indexes.resize(columns.LogicalColumnCount(), PhysicalIndex(DConstants::INVALID_INDEX));
-		for(idx_t c = 0; c < insert.column_index_map.size(); c++) {
+		for (idx_t c = 0; c < insert.column_index_map.size(); c++) {
 			auto column_index = PhysicalIndex(c);
 			auto mapped_index = insert.column_index_map[column_index];
 			if (mapped_index == DConstants::INVALID_INDEX) {
@@ -51,7 +54,7 @@ string GetInsertSQL(const SQLiteInsert &insert, SQLiteTableEntry *entry) {
 			column_indexes[mapped_index] = column_index;
 			column_count++;
 		}
-		for(idx_t c = 0; c < column_count; c++) {
+		for (idx_t c = 0; c < column_count; c++) {
 			if (c > 0) {
 				result += ", ";
 			}
@@ -63,7 +66,7 @@ string GetInsertSQL(const SQLiteInsert &insert, SQLiteTableEntry *entry) {
 		column_count = columns.LogicalColumnCount();
 	}
 	result += " VALUES (";
-	for(idx_t i = 0; i < column_count; i++) {
+	for (idx_t i = 0; i < column_count; i++) {
 		if (i > 0) {
 			result += ", ";
 		}
@@ -76,12 +79,13 @@ string GetInsertSQL(const SQLiteInsert &insert, SQLiteTableEntry *entry) {
 unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &context) const {
 	SQLiteTableEntry *insert_table;
 	if (!table) {
-		insert_table = (SQLiteTableEntry *) schema->CreateTable(schema->GetCatalogTransaction(context), info.get());
+		insert_table = (SQLiteTableEntry *)schema->CreateTable(schema->GetCatalogTransaction(context), info.get());
 	} else {
-		insert_table = (SQLiteTableEntry *) table;
+		insert_table = (SQLiteTableEntry *)table;
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *insert_table->catalog);
-	auto result = make_unique<SQLiteInsertGlobalState>(context, insert_table);;
+	auto result = make_unique<SQLiteInsertGlobalState>(context, insert_table);
+	;
 	result->statement = transaction.GetDB().Prepare(GetInsertSQL(*this, insert_table));
 	return std::move(result);
 }
@@ -90,12 +94,12 @@ unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &cont
 // Sink
 //===--------------------------------------------------------------------===//
 SinkResultType SQLiteInsert::Sink(ExecutionContext &context, GlobalSinkState &state, LocalSinkState &lstate,
-					DataChunk &input) const {
+                                  DataChunk &input) const {
 	auto &gstate = (SQLiteInsertGlobalState &)*sink_state;
 	input.Flatten();
 	auto &stmt = gstate.statement;
-	for(idx_t r = 0; r < input.size(); r++) {
-		for(idx_t c = 0; c < input.ColumnCount(); c++) {
+	for (idx_t r = 0; r < input.size(); r++) {
+		for (idx_t c = 0; c < input.ColumnCount(); c++) {
 			auto &col = input.data[c];
 			stmt.BindValue(col, c, r);
 		}
@@ -120,7 +124,7 @@ unique_ptr<GlobalSourceState> SQLiteInsert::GetGlobalSourceState(ClientContext &
 }
 
 void SQLiteInsert::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
-                             LocalSourceState &lstate) const {
+                           LocalSourceState &lstate) const {
 	auto &state = (SQLiteInsertSourceState &)gstate;
 	auto &insert_gstate = (SQLiteInsertGlobalState &)*sink_state;
 	if (state.finished) {
@@ -145,7 +149,8 @@ string SQLiteInsert::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-unique_ptr<PhysicalOperator> SQLiteCatalog::PlanInsert(ClientContext &context, LogicalInsert &op, unique_ptr<PhysicalOperator> plan) {
+unique_ptr<PhysicalOperator> SQLiteCatalog::PlanInsert(ClientContext &context, LogicalInsert &op,
+                                                       unique_ptr<PhysicalOperator> plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for insertion into SQLite table");
 	}
@@ -154,10 +159,11 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanInsert(ClientContext &context, L
 	return std::move(insert);
 }
 
-unique_ptr<PhysicalOperator> SQLiteCatalog::PlanCreateTableAs(ClientContext &context, LogicalCreateTable &op, unique_ptr<PhysicalOperator> plan) {
+unique_ptr<PhysicalOperator> SQLiteCatalog::PlanCreateTableAs(ClientContext &context, LogicalCreateTable &op,
+                                                              unique_ptr<PhysicalOperator> plan) {
 	auto insert = make_unique<SQLiteInsert>(op, op.schema, move(op.info));
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }
 
-}
+} // namespace duckdb

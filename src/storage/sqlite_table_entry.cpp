@@ -6,10 +6,9 @@
 
 namespace duckdb {
 
-SQLiteTableEntry::SQLiteTableEntry(Catalog *catalog, SchemaCatalogEntry *schema, CreateTableInfo &info) :
-   TableCatalogEntry(catalog, schema, info) {
+SQLiteTableEntry::SQLiteTableEntry(Catalog *catalog, SchemaCatalogEntry *schema, CreateTableInfo &info)
+    : TableCatalogEntry(catalog, schema, info) {
 }
-
 
 unique_ptr<BaseStatistics> SQLiteTableEntry::GetStatistics(ClientContext &context, column_t column_id) {
 	return nullptr;
@@ -17,19 +16,27 @@ unique_ptr<BaseStatistics> SQLiteTableEntry::GetStatistics(ClientContext &contex
 
 TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_ptr<FunctionData> &bind_data) {
 	auto result = make_unique<SqliteBindData>();
-	for(auto &col : columns.Logical()) {
+	for (auto &col : columns.Logical()) {
 		result->names.push_back(col.GetName());
 		result->types.push_back(col.GetType());
 	}
-	auto sqlite_catalog = (SQLiteCatalog *) catalog;
+	auto sqlite_catalog = (SQLiteCatalog *)catalog;
 	result->file_name = sqlite_catalog->path;
 	result->table_name = name;
 
-	auto &transaction = (SQLiteTransaction &) Transaction::Get(context, *catalog);
-	result->max_rowid = transaction.GetDB().GetMaxRowId(name);
+	auto &transaction = (SQLiteTransaction &)Transaction::Get(context, *catalog);
+	auto &db = transaction.GetDB();
+
+	result->max_rowid = db.GetMaxRowId(name);
+	if (!transaction.IsReadOnly() || db.InMemory()) {
+		// for in-memory databases or if we have transaction-local changes we can only do a single-threaded scan
+		// set up the transaction's connection object as the global db
+		result->global_db = &db;
+		result->rows_per_group = idx_t(-1);
+	}
 
 	bind_data = move(result);
 	return SqliteScanFunction();
 }
 
-}
+} // namespace duckdb

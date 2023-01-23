@@ -17,4 +17,4 @@ public:
 	SQLiteStorageExtension();
 };
 
-}
+} // namespace duckdb

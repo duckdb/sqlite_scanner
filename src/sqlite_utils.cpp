@@ -79,4 +79,4 @@ LogicalType SQLiteUtils::TypeToLogicalType(const string &sqlite_type) {
 	return LogicalType::VARCHAR;
 }
 
-}
+} // namespace duckdb

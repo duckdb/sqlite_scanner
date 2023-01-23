@@ -6,12 +6,13 @@
 
 namespace duckdb {
 
-SQLiteTransaction::SQLiteTransaction(SQLiteCatalog &sqlite_catalog, TransactionManager &manager, ClientContext &context) :
-	Transaction(manager, context), sqlite_catalog(sqlite_catalog) {
+SQLiteTransaction::SQLiteTransaction(SQLiteCatalog &sqlite_catalog, TransactionManager &manager, ClientContext &context)
+    : Transaction(manager, context), sqlite_catalog(sqlite_catalog) {
 	db = SQLiteDB::Open(sqlite_catalog.path, sqlite_catalog.access_mode == AccessMode::READ_ONLY ? true : false, true);
 }
 
-SQLiteTransaction::~SQLiteTransaction() {}
+SQLiteTransaction::~SQLiteTransaction() {
+}
 
 void SQLiteTransaction::Start() {
 	db.Execute("BEGIN TRANSACTION");
@@ -28,7 +29,7 @@ SQLiteDB &SQLiteTransaction::GetDB() {
 }
 
 SQLiteTransaction &SQLiteTransaction::Get(ClientContext &context, Catalog &catalog) {
-	return (SQLiteTransaction &) Transaction::Get(context, catalog);
+	return (SQLiteTransaction &)Transaction::Get(context, catalog);
 }
 
 SQLiteTableEntry *SQLiteTransaction::GetTable(const string &table_name) {
@@ -52,6 +53,10 @@ SQLiteTableEntry *SQLiteTransaction::GetTable(const string &table_name) {
 	}
 }
 
+void SQLiteTransaction::ClearTableEntry(const string &table_name) {
+	tables.erase(table_name);
+}
+
 string GetDropSQL(const string &table_name, bool cascade) {
 	string result;
 	result = "DROP TABLE ";
@@ -67,4 +72,4 @@ void SQLiteTransaction::DropTable(const string &table_name, bool cascade) {
 	db.Execute(GetDropSQL(table_name, cascade));
 }
 
-}
+} // namespace duckdb

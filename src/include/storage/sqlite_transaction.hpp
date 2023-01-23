@@ -28,6 +28,7 @@ public:
 	SQLiteDB &GetDB();
 	SQLiteTableEntry *GetTable(const string &table_name);
 	void DropTable(const string &table_name, bool cascade);
+	void ClearTableEntry(const string &table_name);
 
 	static SQLiteTransaction &Get(ClientContext &context, Catalog &catalog);
 
@@ -37,4 +38,4 @@ private:
 	case_insensitive_map_t<unique_ptr<SQLiteTableEntry>> tables;
 };
 
-}
+} // namespace duckdb

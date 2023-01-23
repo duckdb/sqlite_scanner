@@ -8,16 +8,16 @@
 
 namespace duckdb {
 
-SQLiteDelete::SQLiteDelete(LogicalOperator &op, TableCatalogEntry &table) :
-	PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table) {}
+SQLiteDelete::SQLiteDelete(LogicalOperator &op, TableCatalogEntry &table)
+    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table) {
+}
 
 //===--------------------------------------------------------------------===//
 // States
 //===--------------------------------------------------------------------===//
 class SQLiteDeleteGlobalState : public GlobalSinkState {
 public:
-	explicit SQLiteDeleteGlobalState(SQLiteTableEntry &table)
-	    : table(table), delete_count(0) {
+	explicit SQLiteDeleteGlobalState(SQLiteTableEntry &table) : table(table), delete_count(0) {
 	}
 
 	SQLiteTableEntry &table;
@@ -33,7 +33,7 @@ string GetDeleteSQL(const string &table_name) {
 }
 
 unique_ptr<GlobalSinkState> SQLiteDelete::GetGlobalSinkState(ClientContext &context) const {
-	auto &sqlite_table = (SQLiteTableEntry &) table;
+	auto &sqlite_table = (SQLiteTableEntry &)table;
 
 	auto &transaction = SQLiteTransaction::Get(context, *sqlite_table.catalog);
 	auto result = make_unique<SQLiteDeleteGlobalState>(sqlite_table);
@@ -45,13 +45,13 @@ unique_ptr<GlobalSinkState> SQLiteDelete::GetGlobalSinkState(ClientContext &cont
 // Sink
 //===--------------------------------------------------------------------===//
 SinkResultType SQLiteDelete::Sink(ExecutionContext &context, GlobalSinkState &state_p, LocalSinkState &lstate,
-					DataChunk &input) const {
-	auto &gstate = (SQLiteDeleteGlobalState &) state_p;
+                                  DataChunk &input) const {
+	auto &gstate = (SQLiteDeleteGlobalState &)state_p;
 
 	input.Flatten();
 	auto &row_identifiers = input.data[0];
 	auto row_data = FlatVector::GetData<row_t>(row_identifiers);
-	for(idx_t i = 0; i < input.size(); i++) {
+	for (idx_t i = 0; i < input.size(); i++) {
 		gstate.statement.Bind<int64_t>(0, row_data[i]);
 		gstate.statement.Step();
 		gstate.statement.Reset();
@@ -73,7 +73,7 @@ unique_ptr<GlobalSourceState> SQLiteDelete::GetGlobalSourceState(ClientContext &
 }
 
 void SQLiteDelete::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
-                             LocalSourceState &lstate) const {
+                           LocalSourceState &lstate) const {
 	auto &state = (SQLiteDeleteSourceState &)gstate;
 	auto &insert_gstate = (SQLiteDeleteGlobalState &)*sink_state;
 	if (state.finished) {
@@ -98,7 +98,8 @@ string SQLiteDelete::ParamsToString() const {
 //===--------------------------------------------------------------------===//
 // Plan
 //===--------------------------------------------------------------------===//
-unique_ptr<PhysicalOperator> SQLiteCatalog::PlanDelete(ClientContext &context, LogicalDelete &op, unique_ptr<PhysicalOperator> plan) {
+unique_ptr<PhysicalOperator> SQLiteCatalog::PlanDelete(ClientContext &context, LogicalDelete &op,
+                                                       unique_ptr<PhysicalOperator> plan) {
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for deletion of a SQLite table");
 	}
@@ -107,4 +108,4 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanDelete(ClientContext &context, L
 	return std::move(insert);
 }
 
-}
+} // namespace duckdb

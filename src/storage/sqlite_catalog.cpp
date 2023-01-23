@@ -3,10 +3,12 @@
 
 namespace duckdb {
 
-SQLiteCatalog::SQLiteCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode) : Catalog(db_p), path(path), access_mode(access_mode) {
+SQLiteCatalog::SQLiteCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode)
+    : Catalog(db_p), path(path), access_mode(access_mode) {
 }
 
-SQLiteCatalog::~SQLiteCatalog() {}
+SQLiteCatalog::~SQLiteCatalog() {
+}
 
 void SQLiteCatalog::Initialize(bool load_builtin) {
 	main_schema = make_unique<SQLiteSchemaEntry>(this);
@@ -20,9 +22,8 @@ void SQLiteCatalog::ScanSchemas(ClientContext &context, std::function<void(Catal
 	callback(main_schema.get());
 }
 
-SchemaCatalogEntry *SQLiteCatalog::GetSchema(CatalogTransaction transaction, const string &schema_name,
-							  bool if_exists,
-							  QueryErrorContext error_context) {
+SchemaCatalogEntry *SQLiteCatalog::GetSchema(CatalogTransaction transaction, const string &schema_name, bool if_exists,
+                                             QueryErrorContext error_context) {
 	if (schema_name == DEFAULT_SCHEMA || schema_name == INVALID_SCHEMA) {
 		return main_schema.get();
 	}
@@ -36,4 +37,4 @@ void SQLiteCatalog::DropSchema(ClientContext &context, DropInfo *info) {
 	throw BinderException("SQLite databases do not support dropping schemas");
 }
 
-}
+} // namespace duckdb

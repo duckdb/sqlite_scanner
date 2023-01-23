@@ -32,12 +32,14 @@ public:
 	SQLiteStatement Prepare(const string &query);
 	void Execute(const string &query);
 	vector<string> GetTables();
-	void GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints, bool all_varchar);
+	void GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints,
+	                  bool all_varchar);
 	idx_t GetMaxRowId(const string &table_name);
 	bool ColumnExists(const string &table_name, const string &column_name);
+	bool InMemory();
 
 	bool IsOpen();
 	void Close();
 };
 
-}
+} // namespace duckdb

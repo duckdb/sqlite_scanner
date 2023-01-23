@@ -29,4 +29,4 @@ private:
 	unordered_map<Transaction *, unique_ptr<SQLiteTransaction>> transactions;
 };
 
-}
+} // namespace duckdb

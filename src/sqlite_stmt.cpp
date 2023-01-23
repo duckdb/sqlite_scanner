@@ -132,4 +132,28 @@ void SQLiteStatement::Bind(idx_t col, nullptr_t value) {
 	SQLiteUtils::Check(sqlite3_bind_null(stmt, col + 1), db);
 }
 
+void SQLiteStatement::BindValue(Vector &col, idx_t c, idx_t r) {
+	auto &mask = FlatVector::Validity(col);
+	if (!mask.RowIsValid(r)) {
+		Bind<nullptr_t>(c, nullptr);
+	} else {
+		switch (col.GetType().id()) {
+			case LogicalTypeId::INTEGER:
+				Bind<int>(c, FlatVector::GetData<int32_t>(col)[r]);
+				break;
+			case LogicalTypeId::BIGINT:
+				Bind<int64_t>(c, FlatVector::GetData<int64_t>(col)[r]);
+				break;
+			case LogicalTypeId::DOUBLE:
+				Bind<double>(c, FlatVector::GetData<double>(col)[r]);
+				break;
+			case LogicalTypeId::VARCHAR:
+				BindText(c, FlatVector::GetData<string_t>(col)[r]);
+				break;
+			default:
+				throw InternalException("Unsupported type for SQLite insert");
+		}
+	}
+}
+
 }

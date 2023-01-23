@@ -42,3 +42,6 @@ ROLLBACK
 query I
 SELECT * FROM s.test
 ----
+
+# TODO - transaction local delete (rollback & query)
+# TODO - transaction local update (rollback & query)

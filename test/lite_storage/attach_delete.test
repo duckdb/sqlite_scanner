@@ -2,7 +2,7 @@ statement ok
 LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
 
 statement ok
-ATTACH '__TEST_DIR__/attach_alter.db' AS s1 (TYPE SQLITE)
+ATTACH '__TEST_DIR__/attach_delete.db' AS s1 (TYPE SQLITE)
 
 statement ok
 CREATE TABLE s1.test(i INTEGER);
@@ -52,3 +52,41 @@ DELETE FROM s1.test
 
 query I
 SELECT * FROM s1.test
+
+query I
+DELETE FROM s1.test
+----
+0
+
+# RETURNING statement
+statement error
+DELETE FROM s1.test RETURNING *;
+----
+not yet supported
+
+statement ok
+INSERT INTO s1.test VALUES (1), (2), (3), (NULL);
+
+statement ok
+CREATE TABLE duckdb_table AS SELECT 1 i UNION ALL SELECT 3 UNION ALL SELECT 1
+
+# DELETE with join on another table
+statement ok
+DELETE FROM s1.test USING duckdb_table WHERE test.i = duckdb_table.i
+
+query I
+SELECT * FROM s1.test
+----
+2
+NULL
+
+# DELETE with subquery referring to itself
+query I
+DELETE FROM s1.test WHERE i=(SELECT MIN(i) FROM s1.test)
+----
+1
+
+query I
+SELECT * FROM s1.test
+----
+NULL

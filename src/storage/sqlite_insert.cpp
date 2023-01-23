@@ -97,33 +97,13 @@ SinkResultType SQLiteInsert::Sink(ExecutionContext &context, GlobalSinkState &st
 	for(idx_t r = 0; r < input.size(); r++) {
 		for(idx_t c = 0; c < input.ColumnCount(); c++) {
 			auto &col = input.data[c];
-			auto &mask = FlatVector::Validity(col);
-			if (!mask.RowIsValid(r)) {
-				stmt.Bind<nullptr_t>(c, nullptr);
-			} else {
-				switch(col.GetType().id()) {
-				case LogicalTypeId::INTEGER:
-					stmt.Bind<int>(c, FlatVector::GetData<int32_t>(col)[r]);
-					break;
-				case LogicalTypeId::BIGINT:
-					stmt.Bind<int64_t>(c, FlatVector::GetData<int64_t>(col)[r]);
-					break;
-				case LogicalTypeId::DOUBLE:
-					stmt.Bind<double>(c, FlatVector::GetData<double>(col)[r]);
-					break;
-				case LogicalTypeId::VARCHAR:
-					stmt.BindText(c, FlatVector::GetData<string_t>(col)[r]);
-					break;
-				default:
-					throw InternalException("Unsupported type for SQLite insert");
-				}
-			}
+			stmt.BindValue(col, c, r);
 		}
 		// execute and clear bindings
 		stmt.Step();
 		stmt.Reset();
 	}
-
+	gstate.insert_count += input.size();
 	return SinkResultType::NEED_MORE_INPUT;
 }
 

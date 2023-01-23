@@ -1,0 +1,96 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH '__TEST_DIR__/attach_update.db' AS s1 (TYPE SQLITE)
+
+statement ok
+CREATE TABLE s1.test(i INTEGER);
+
+statement ok
+INSERT INTO s1.test VALUES (1), (2), (3), (NULL);
+
+# global update
+statement ok
+UPDATE s1.test SET i = i + 1;
+
+query II
+SELECT rowid, * FROM s1.test
+----
+1	2
+2	3
+3	4
+4	NULL
+
+# update with WHERE statement
+statement ok
+UPDATE s1.test SET i = i + 100 WHERE i = 3
+
+query II
+SELECT rowid, * FROM s1.test
+----
+1	2
+2	103
+3	4
+4	NULL
+
+# update with NULL value
+statement ok
+UPDATE s1.test SET i = NULL WHERE i = 2
+
+query II
+SELECT rowid, * FROM s1.test
+----
+1	NULL
+2	103
+3	4
+4	NULL
+
+# update with DEFAULT clause
+statement error
+UPDATE s1.test SET i = DEFAULT WHERE i = 4
+----
+not yet supported
+
+# multi column update in different orders
+statement ok
+CREATE OR REPLACE TABLE s1.test(i INTEGER PRIMARY KEY, j INTEGER, k INTEGER);
+
+query I
+INSERT INTO s1.test VALUES (1, 10, 100), (2, NULL, 200), (3, 30, NULL), (4, 40, 400);
+----
+4
+
+query III
+SELECT * FROM s1.test
+----
+1	10	100
+2	NULL	200
+3	30	NULL
+4	40	400
+
+statement ok
+UPDATE s1.test SET k=990 + i, i=i, j=99 WHERE i=2 OR i=4
+
+query III
+SELECT * FROM s1.test
+----
+1	10	100
+2	99	992
+3	30	NULL
+4	99	994
+
+# duplicates in SET statements
+statement error
+UPDATE s1.test SET j=k, j=i
+----
+Multiple assignments to same column
+
+# RETURNING statement
+statement error
+UPDATE s1.test SET i=42 RETURNING *;
+----
+not yet supported
+
+# UPDATE with join on another table
+# UPDATE with subquery referring

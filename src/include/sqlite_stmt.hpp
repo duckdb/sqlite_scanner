@@ -38,6 +38,7 @@ public:
 		throw InternalException("Unsupported type for SQLiteStatement::Bind");
 	}
 	void BindText(idx_t col, const string_t &value);
+	void BindValue(Vector &col, idx_t c, idx_t r);
 	int GetType(idx_t col);
 	bool IsOpen();
 	void Close();

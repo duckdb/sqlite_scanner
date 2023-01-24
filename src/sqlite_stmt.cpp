@@ -41,9 +41,11 @@ int SQLiteStatement::GetType(idx_t col) {
 	D_ASSERT(stmt);
 	return sqlite3_column_type(stmt, col);
 }
+
 bool SQLiteStatement::IsOpen() {
 	return stmt;
 }
+
 void SQLiteStatement::Close() {
 	if (!IsOpen()) {
 		return;

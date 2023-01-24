@@ -184,7 +184,7 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 			if (!has_more) {
 				state.done = true;
 				output.SetCardinality(out_idx);
-				return;
+				break;
 			}
 			for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
 				auto &out_vec = output.data[col_idx];

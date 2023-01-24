@@ -149,7 +149,7 @@ void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
 
 CatalogEntry *SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type, const string &name) {
 	if (type != CatalogType::TABLE_ENTRY) {
-		throw BinderException("Only tables are supported for now");
+		return nullptr;
 	}
 	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
 	return sqlite_transaction.GetTable(name);

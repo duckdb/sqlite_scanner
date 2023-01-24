@@ -43,13 +43,6 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 	return result;
 }
 
-bool SQLiteDB::InMemory() {
-	if (!db) {
-		throw InternalException("SQLiteDB::InMemory called without a database active");
-	}
-	return sqlite3_db_filename(db, "main") == nullptr;
-}
-
 SQLiteStatement SQLiteDB::Prepare(const string &query) {
 	SQLiteStatement stmt;
 	stmt.db = db;

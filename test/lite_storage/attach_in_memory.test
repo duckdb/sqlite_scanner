@@ -14,3 +14,25 @@ query I
 SELECT * FROM mem.integers
 ----
 42
+
+statement ok
+BEGIN
+
+statement ok
+INSERT INTO mem.integers FROM range(3)
+
+query I
+SELECT * FROM mem.integers
+----
+42
+0
+1
+2
+
+statement ok
+ROLLBACK
+
+query I
+SELECT * FROM mem.integers
+----
+42

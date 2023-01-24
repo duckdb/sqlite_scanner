@@ -36,7 +36,6 @@ public:
 	                  bool all_varchar);
 	idx_t GetMaxRowId(const string &table_name);
 	bool ColumnExists(const string &table_name, const string &column_name);
-	bool InMemory();
 
 	bool IsOpen();
 	void Close();

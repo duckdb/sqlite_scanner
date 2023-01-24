@@ -10,6 +10,7 @@
 
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/common/enums/access_mode.hpp"
+#include "sqlite_db.hpp"
 
 namespace duckdb {
 class SQLiteSchemaEntry;
@@ -45,11 +46,26 @@ public:
 	unique_ptr<PhysicalOperator> PlanUpdate(ClientContext &context, LogicalUpdate &op,
 	                                        unique_ptr<PhysicalOperator> plan) override;
 
+	//! Whether or not this is an in-memory SQLite database
+	bool InMemory();
+	//! Returns a reference to the in-memory database (if any)
+	SQLiteDB *GetInMemoryDatabase();
+	//! Release the in-memory database (if there is any)
+	void ReleaseInMemoryDatabase();
+
 private:
 	void DropSchema(ClientContext &context, DropInfo *info) override;
 
 private:
 	unique_ptr<SQLiteSchemaEntry> main_schema;
+	//! Whether or not the database is in-memory
+	bool in_memory;
+	//! In-memory database - if any
+	SQLiteDB in_memory_db;
+	//! The lock maintaing access to the in-memory database
+	mutex in_memory_lock;
+	//! Whether or not there is any active transaction on the in-memory database
+	bool active_in_memory;
 };
 
 } // namespace duckdb

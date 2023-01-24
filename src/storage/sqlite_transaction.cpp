@@ -8,24 +8,33 @@ namespace duckdb {
 
 SQLiteTransaction::SQLiteTransaction(SQLiteCatalog &sqlite_catalog, TransactionManager &manager, ClientContext &context)
     : Transaction(manager, context), sqlite_catalog(sqlite_catalog) {
-	db = SQLiteDB::Open(sqlite_catalog.path, sqlite_catalog.access_mode == AccessMode::READ_ONLY ? true : false, true);
+	if (sqlite_catalog.InMemory()) {
+		// in-memory database - get a reference to the in-memory connection
+		db = sqlite_catalog.GetInMemoryDatabase();
+	} else {
+		// on-disk database - open a new database connection
+		owned_db = SQLiteDB::Open(sqlite_catalog.path,
+		                          sqlite_catalog.access_mode == AccessMode::READ_ONLY ? true : false, true);
+		db = &owned_db;
+	}
 }
 
 SQLiteTransaction::~SQLiteTransaction() {
+	sqlite_catalog.ReleaseInMemoryDatabase();
 }
 
 void SQLiteTransaction::Start() {
-	db.Execute("BEGIN TRANSACTION");
+	db->Execute("BEGIN TRANSACTION");
 }
 void SQLiteTransaction::Commit() {
-	db.Execute("COMMIT");
+	db->Execute("COMMIT");
 }
 void SQLiteTransaction::Rollback() {
-	db.Execute("ROLLBACK");
+	db->Execute("ROLLBACK");
 }
 
 SQLiteDB &SQLiteTransaction::GetDB() {
-	return db;
+	return *db;
 }
 
 SQLiteTransaction &SQLiteTransaction::Get(ClientContext &context, Catalog &catalog) {
@@ -38,7 +47,7 @@ SQLiteTableEntry *SQLiteTransaction::GetTable(const string &table_name) {
 		// table catalog entry not found - look up table in main SQLite database
 		CreateTableInfo info(sqlite_catalog.GetMainSchema(), table_name);
 		// FIXME: all_varchar from config
-		db.GetTableInfo(table_name, info.columns, info.constraints, false);
+		db->GetTableInfo(table_name, info.columns, info.constraints, false);
 		if (info.columns.empty()) {
 			// table not found in SQLite database
 			return nullptr;
@@ -69,7 +78,7 @@ string GetDropSQL(const string &table_name, bool cascade) {
 
 void SQLiteTransaction::DropTable(const string &table_name, bool cascade) {
 	tables.erase(table_name);
-	db.Execute(GetDropSQL(table_name, cascade));
+	db->Execute(GetDropSQL(table_name, cascade));
 }
 
 } // namespace duckdb

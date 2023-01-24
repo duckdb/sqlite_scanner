@@ -28,7 +28,7 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 	auto &db = transaction.GetDB();
 
 	result->max_rowid = db.GetMaxRowId(name);
-	if (!transaction.IsReadOnly() || db.InMemory()) {
+	if (!transaction.IsReadOnly() || sqlite_catalog->InMemory()) {
 		// for in-memory databases or if we have transaction-local changes we can only do a single-threaded scan
 		// set up the transaction's connection object as the global db
 		result->global_db = &db;

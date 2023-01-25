@@ -19,46 +19,46 @@ SQLite databases do not support dropping schemas
 statement error
 CREATE MACRO s.plus1(a) AS a+1
 ----
-xx
+SQLite databases do not support creating functions
 
 statement error
 DROP MACRO s.plus1
 ----
-xx
+do not support
 
 statement error
 SELECT s.plus1(42);
 ----
-xx
+do not support
 
 statement error
 SELECT s.plus1(42) over ();
 ----
-xx
+do not support
 
 # sequences
 statement error
 CREATE SEQUENCE s.seq
 ----
-xx
+SQLite databases do not support creating sequences
 
 statement error
 SELECT nextval('s.seq')
 ----
-xx
+do not support entries of type "Sequence"
 
 statement error
 DROP SEQUENCE s.seq
 ----
-xx
+do not support entries of type "Sequence"
 
 # types
 statement error
 CREATE TYPE s.my_type as BLOB;
 ----
-xx
+SQLite databases do not support creating types
 
 statement error
-SELECT 'a'::s.my_type
+SELECT 'a'::"s.my_type"
 ----
-xx
+do not support entries of type "Type"

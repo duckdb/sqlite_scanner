@@ -243,7 +243,7 @@ void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type,
 		entries = transaction.GetDB().GetEntries("index");
 		break;
 	default:
-		throw BinderException("Only tables, views and indexes are supported for now");
+		throw BinderException("SQLite databases do not support entries of type \"%s\"", CatalogTypeToString(type));
 	}
 	for (auto &entry_name : entries) {
 		callback(GetEntry(GetCatalogTransaction(context), type, entry_name));
@@ -260,7 +260,8 @@ void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
 	case CatalogType::INDEX_ENTRY:
 		break;
 	default:
-		throw BinderException("Only tables, views and indexes are supported for now");
+		throw BinderException("SQLite databases do not support dropping entries of type \"%s\"",
+		                      CatalogTypeToString(type));
 	}
 	auto table = GetEntry(GetCatalogTransaction(context), info->type, info->name);
 	if (!table) {

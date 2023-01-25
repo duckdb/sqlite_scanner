@@ -33,7 +33,8 @@ public:
 	void Execute(const string &query);
 	vector<string> GetTables();
 
-	CatalogType GetTableOrView(const string &name);
+	vector<string> GetEntries(string entry_type);
+	CatalogType GetEntryType(const string &name);
 	void GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints,
 	                  bool all_varchar);
 	void GetViewInfo(const string &view_name, string &sql);

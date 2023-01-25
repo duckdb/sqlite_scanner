@@ -77,9 +77,9 @@ void SQLiteDB::Close() {
 	db = nullptr;
 }
 
-vector<string> SQLiteDB::GetTables() {
+vector<string> SQLiteDB::GetEntries(string entry_type) {
 	vector<string> result;
-	SQLiteStatement stmt = Prepare("SELECT name FROM sqlite_master WHERE type='table'");
+	SQLiteStatement stmt = Prepare("SELECT name FROM sqlite_master WHERE type='" + entry_type + "'");
 	while (stmt.Step()) {
 		auto table_name = stmt.GetValue<string>(0);
 		result.push_back(move(table_name));
@@ -87,7 +87,11 @@ vector<string> SQLiteDB::GetTables() {
 	return result;
 }
 
-CatalogType SQLiteDB::GetTableOrView(const string &name) {
+vector<string> SQLiteDB::GetTables() {
+	return GetEntries("table");
+}
+
+CatalogType SQLiteDB::GetEntryType(const string &name) {
 	SQLiteStatement stmt;
 	stmt = Prepare(
 	    StringUtil::Format("SELECT type FROM sqlite_master WHERE name='%s';", SQLiteUtils::SanitizeString(name)));
@@ -97,6 +101,8 @@ CatalogType SQLiteDB::GetTableOrView(const string &name) {
 			return CatalogType::TABLE_ENTRY;
 		} else if (type == "view") {
 			return CatalogType::VIEW_ENTRY;
+		} else if (type == "index") {
+			return CatalogType::INDEX_ENTRY;
 		} else {
 			throw InternalException("Unrecognized SQLite type \"%s\"", name);
 		}

@@ -45,6 +45,8 @@ public:
 	                                        unique_ptr<PhysicalOperator> plan) override;
 	unique_ptr<PhysicalOperator> PlanUpdate(ClientContext &context, LogicalUpdate &op,
 	                                        unique_ptr<PhysicalOperator> plan) override;
+	unique_ptr<LogicalOperator> BindCreateIndex(Binder &binder, CreateStatement &stmt, TableCatalogEntry &table,
+	                                            unique_ptr<LogicalOperator> plan) override;
 
 	//! Whether or not this is an in-memory SQLite database
 	bool InMemory();

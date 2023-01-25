@@ -4,12 +4,14 @@
 #include "duckdb/catalog/dependency_list.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
 #include "duckdb/parser/parsed_data/create_view_info.hpp"
+#include "duckdb/parser/parsed_data/create_index_info.hpp"
 #include "duckdb/planner/parsed_data/bound_create_table_info.hpp"
 #include "duckdb/parser/parsed_data/drop_info.hpp"
 #include "duckdb/parser/constraints/list.hpp"
 #include "duckdb/common/unordered_set.hpp"
 #include "duckdb/parser/parsed_data/alter_info.hpp"
 #include "duckdb/parser/parsed_data/alter_table_info.hpp"
+#include "duckdb/parser/parsed_expression_iterator.hpp"
 
 namespace duckdb {
 
@@ -57,8 +59,42 @@ CatalogEntry *SQLiteSchemaEntry::CreateFunction(CatalogTransaction transaction, 
 	throw BinderException("SQLite databases do not support creating functions");
 }
 
+void UnqualifyColumnReferences(ParsedExpression &expr) {
+	if (expr.type == ExpressionType::COLUMN_REF) {
+		auto &colref = (ColumnRefExpression &)expr;
+		auto name = move(colref.column_names.back());
+		colref.column_names = {move(name)};
+		return;
+	}
+	ParsedExpressionIterator::EnumerateChildren(expr, UnqualifyColumnReferences);
+}
+
+string GetCreateIndexSQL(CreateIndexInfo &info, TableCatalogEntry &tbl) {
+	string sql;
+	sql = "CREATE";
+	if (info.constraint_type == IndexConstraintType::UNIQUE) {
+		sql += " UNIQUE";
+	}
+	sql += " INDEX ";
+	sql += KeywordHelper::WriteOptionallyQuoted(info.index_name);
+	sql += " ON ";
+	sql += KeywordHelper::WriteOptionallyQuoted(tbl.name);
+	sql += "(";
+	for (idx_t i = 0; i < info.parsed_expressions.size(); i++) {
+		if (i > 0) {
+			sql += ", ";
+		}
+		UnqualifyColumnReferences(*info.parsed_expressions[i]);
+		sql += info.parsed_expressions[i]->ToString();
+	}
+	sql += ")";
+	return sql;
+}
+
 CatalogEntry *SQLiteSchemaEntry::CreateIndex(ClientContext &context, CreateIndexInfo *info, TableCatalogEntry *table) {
-	throw InternalException("CreateIndex");
+	auto &sqlite_transaction = SQLiteTransaction::Get(context, *table->catalog);
+	sqlite_transaction.GetDB().Execute(GetCreateIndexSQL(*info, *table));
+	return nullptr;
 }
 
 string GetCreateViewSQL(CreateViewInfo &info) {
@@ -196,13 +232,21 @@ void SQLiteSchemaEntry::Alter(ClientContext &context, AlterInfo *info) {
 
 void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type,
                              const std::function<void(CatalogEntry *)> &callback) {
-	if (type != CatalogType::TABLE_ENTRY && type != CatalogType::VIEW_ENTRY) {
-		throw BinderException("Only tables and views are supported for now");
-	}
 	auto &transaction = SQLiteTransaction::Get(context, *catalog);
-	auto tables = transaction.GetDB().GetTables();
-	for (auto &table_name : tables) {
-		callback(GetEntry(GetCatalogTransaction(context), type, table_name));
+	vector<string> entries;
+	switch (type) {
+	case CatalogType::TABLE_ENTRY:
+	case CatalogType::VIEW_ENTRY:
+		entries = transaction.GetDB().GetTables();
+		break;
+	case CatalogType::INDEX_ENTRY:
+		entries = transaction.GetDB().GetEntries("index");
+		break;
+	default:
+		throw BinderException("Only tables, views and indexes are supported for now");
+	}
+	for (auto &entry_name : entries) {
+		callback(GetEntry(GetCatalogTransaction(context), type, entry_name));
 	}
 }
 void SQLiteSchemaEntry::Scan(CatalogType type, const std::function<void(CatalogEntry *)> &callback) {
@@ -210,23 +254,29 @@ void SQLiteSchemaEntry::Scan(CatalogType type, const std::function<void(CatalogE
 }
 
 void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
-	if (info->type != CatalogType::TABLE_ENTRY && info->type != CatalogType::VIEW_ENTRY) {
-		throw BinderException("Only tables and views are supported for now");
+	switch (info->type) {
+	case CatalogType::TABLE_ENTRY:
+	case CatalogType::VIEW_ENTRY:
+	case CatalogType::INDEX_ENTRY:
+		break;
+	default:
+		throw BinderException("Only tables, views and indexes are supported for now");
 	}
 	auto table = GetEntry(GetCatalogTransaction(context), info->type, info->name);
 	if (!table) {
 		throw InternalException("Failed to drop entry \"%s\" - could not find entry", info->name);
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *catalog);
-	transaction.DropTableOrView(info->type, info->name, info->cascade);
+	transaction.DropEntry(info->type, info->name, info->cascade);
 }
 
 CatalogEntry *SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type, const string &name) {
 	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
 	switch (type) {
+	case CatalogType::INDEX_ENTRY:
 	case CatalogType::TABLE_ENTRY:
 	case CatalogType::VIEW_ENTRY:
-		return sqlite_transaction.GetTableOrView(name);
+		return sqlite_transaction.GetCatalogEntry(name);
 	default:
 		return nullptr;
 	}

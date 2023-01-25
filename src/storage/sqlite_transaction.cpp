@@ -4,6 +4,7 @@
 #include "storage/sqlite_table_entry.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
 #include "duckdb/parser/parsed_data/create_view_info.hpp"
+#include "duckdb/catalog/catalog_entry/index_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/view_catalog_entry.hpp"
 
 namespace duckdb {
@@ -43,47 +44,53 @@ SQLiteTransaction &SQLiteTransaction::Get(ClientContext &context, Catalog &catal
 	return (SQLiteTransaction &)Transaction::Get(context, catalog);
 }
 
-CatalogEntry *SQLiteTransaction::GetTableOrView(const string &table_name) {
-	auto entry = tables.find(table_name);
-	if (entry == tables.end()) {
-		// table catalog entry not found - look up table in main SQLite database
-		auto type = db->GetTableOrView(table_name);
-		if (type == CatalogType::INVALID) {
-			// no table or view found
-			return nullptr;
-		}
-		unique_ptr<CatalogEntry> result;
-		switch (type) {
-		case CatalogType::TABLE_ENTRY: {
-			CreateTableInfo info(sqlite_catalog.GetMainSchema(), table_name);
-			// FIXME: all_varchar from config
-			db->GetTableInfo(table_name, info.columns, info.constraints, false);
-			D_ASSERT(!info.columns.empty());
-
-			result = make_unique<SQLiteTableEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), info);
-			break;
-		}
-		case CatalogType::VIEW_ENTRY: {
-			string sql;
-			db->GetViewInfo(table_name, sql);
-
-			auto view_info = CreateViewInfo::FromCreateView(*context.lock(), sql);
-			result = make_unique<ViewCatalogEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), view_info.get());
-			break;
-		}
-		default:
-			throw InternalException("Unrecognized table type");
-		}
-		auto result_ptr = result.get();
-		tables[table_name] = move(result);
-		return result_ptr;
-	} else {
+CatalogEntry *SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
+	auto entry = catalog_entries.find(entry_name);
+	if (entry != catalog_entries.end()) {
 		return entry->second.get();
 	}
+	// catalog entry not found - look up table in main SQLite database
+	auto type = db->GetEntryType(entry_name);
+	if (type == CatalogType::INVALID) {
+		// no table or view found
+		return nullptr;
+	}
+	unique_ptr<CatalogEntry> result;
+	switch (type) {
+	case CatalogType::TABLE_ENTRY: {
+		CreateTableInfo info(sqlite_catalog.GetMainSchema(), entry_name);
+		// FIXME: all_varchar from config
+		db->GetTableInfo(entry_name, info.columns, info.constraints, false);
+		D_ASSERT(!info.columns.empty());
+
+		result = make_unique<SQLiteTableEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), info);
+		break;
+	}
+	case CatalogType::VIEW_ENTRY: {
+		string sql;
+		db->GetViewInfo(entry_name, sql);
+
+		auto view_info = CreateViewInfo::FromCreateView(*context.lock(), sql);
+		result = make_unique<ViewCatalogEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), view_info.get());
+		break;
+	}
+	case CatalogType::INDEX_ENTRY: {
+		CreateIndexInfo info;
+		info.index_name = entry_name;
+
+		result = make_unique<IndexCatalogEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), &info);
+		break;
+	}
+	default:
+		throw InternalException("Unrecognized catalog entry type");
+	}
+	auto result_ptr = result.get();
+	catalog_entries[entry_name] = move(result);
+	return result_ptr;
 }
 
 void SQLiteTransaction::ClearTableEntry(const string &table_name) {
-	tables.erase(table_name);
+	catalog_entries.erase(table_name);
 }
 
 string GetDropSQL(CatalogType type, const string &table_name, bool cascade) {
@@ -96,18 +103,18 @@ string GetDropSQL(CatalogType type, const string &table_name, bool cascade) {
 	case CatalogType::VIEW_ENTRY:
 		result += "VIEW ";
 		break;
+	case CatalogType::INDEX_ENTRY:
+		result += "INDEX ";
+		break;
 	default:
 		throw InternalException("Unsupported type for drop");
 	}
 	result += KeywordHelper::WriteOptionallyQuoted(table_name);
-	if (cascade) {
-		result += " CASCADE";
-	}
 	return result;
 }
 
-void SQLiteTransaction::DropTableOrView(CatalogType type, const string &table_name, bool cascade) {
-	tables.erase(table_name);
+void SQLiteTransaction::DropEntry(CatalogType type, const string &table_name, bool cascade) {
+	catalog_entries.erase(table_name);
 	db->Execute(GetDropSQL(type, table_name, cascade));
 }
 

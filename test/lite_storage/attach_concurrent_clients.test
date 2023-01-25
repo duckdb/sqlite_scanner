@@ -1,2 +1,22 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
 
-# concurrentforeach
+statement ok
+ATTACH '__TEST_DIR__/attach_concurrentclients.db' AS s1 (TYPE SQLITE)
+
+statement ok
+CREATE TABLE s1.tbl(i INTEGER);
+
+# just run a bunch of queries - these may or may not work but they at least should not crash
+concurrentloop i 0 10
+
+loop k 0 10
+
+statement maybe
+INSERT INTO s1.tbl VALUES (${i} + ${k})
+----
+database is locked
+
+endloop
+
+endloop

@@ -10,6 +10,7 @@ Transaction *SQLiteTransactionManager::StartTransaction(ClientContext &context) 
 	auto transaction = make_unique<SQLiteTransaction>(sqlite_catalog, *this, context);
 	transaction->Start();
 	auto result = transaction.get();
+	lock_guard<mutex> l(transaction_lock);
 	transactions[result] = move(transaction);
 	return result;
 }
@@ -17,6 +18,7 @@ Transaction *SQLiteTransactionManager::StartTransaction(ClientContext &context) 
 string SQLiteTransactionManager::CommitTransaction(ClientContext &context, Transaction *transaction) {
 	auto sqlite_transaction = (SQLiteTransaction *)transaction;
 	sqlite_transaction->Commit();
+	lock_guard<mutex> l(transaction_lock);
 	transactions.erase(transaction);
 	return string();
 }
@@ -24,6 +26,7 @@ string SQLiteTransactionManager::CommitTransaction(ClientContext &context, Trans
 void SQLiteTransactionManager::RollbackTransaction(Transaction *transaction) {
 	auto sqlite_transaction = (SQLiteTransaction *)transaction;
 	sqlite_transaction->Rollback();
+	lock_guard<mutex> l(transaction_lock);
 	transactions.erase(transaction);
 }
 

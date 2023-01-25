@@ -26,6 +26,7 @@ public:
 
 private:
 	SQLiteCatalog &sqlite_catalog;
+	mutex transaction_lock;
 	unordered_map<Transaction *, unique_ptr<SQLiteTransaction>> transactions;
 };
 

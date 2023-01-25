@@ -19,10 +19,10 @@ namespace duckdb {
 
 struct SqliteLocalState : public LocalTableFunctionState {
 	SQLiteDB *db;
+	SQLiteDB owned_db;
 	SQLiteStatement stmt;
 	bool done = false;
 	vector<column_t> column_ids;
-	SQLiteDB owned_db;
 
 	~SqliteLocalState() {
 	}

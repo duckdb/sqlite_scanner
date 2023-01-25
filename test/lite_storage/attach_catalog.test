@@ -4,17 +4,7 @@ LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
 statement ok
 ATTACH '__TEST_DIR__/attach_catalog.db' AS s (TYPE SQLITE)
 
-# create sequence
-# use a non-existent sequence (nextval('s1.seq')
-# create a macro
-# create a schema
-# create a type
-# reference a non-existent schema
-# reference a non-existent type
-# reference a non-existent function
-# reference a non-existent window function
-
-
+# schemas
 statement error
 CREATE SCHEMA s.s1
 ----
@@ -24,3 +14,51 @@ statement error
 DROP SCHEMA s.s1
 ----
 SQLite databases do not support dropping schemas
+
+# macros
+statement error
+CREATE MACRO s.plus1(a) AS a+1
+----
+xx
+
+statement error
+DROP MACRO s.plus1
+----
+xx
+
+statement error
+SELECT s.plus1(42);
+----
+xx
+
+statement error
+SELECT s.plus1(42) over ();
+----
+xx
+
+# sequences
+statement error
+CREATE SEQUENCE s.seq
+----
+xx
+
+statement error
+SELECT nextval('s.seq')
+----
+xx
+
+statement error
+DROP SEQUENCE s.seq
+----
+xx
+
+# types
+statement error
+CREATE TYPE s.my_type as BLOB;
+----
+xx
+
+statement error
+SELECT 'a'::s.my_type
+----
+xx

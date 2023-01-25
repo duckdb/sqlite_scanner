@@ -25,8 +25,33 @@ string SQLiteUtils::TypeToString(int sqlite_type) {
 	}
 }
 
+string SQLiteUtils::SanitizeString(const string &table_name) {
+	return StringUtil::Replace(table_name, "'", "''");
+}
+
 string SQLiteUtils::SanitizeIdentifier(const string &table_name) {
 	return StringUtil::Replace(table_name, "\"", "\"\"");
+}
+
+LogicalType SQLiteUtils::ToSQLiteType(const LogicalType &input) {
+	switch (input.id()) {
+	case LogicalTypeId::BOOLEAN:
+	case LogicalTypeId::TINYINT:
+	case LogicalTypeId::SMALLINT:
+	case LogicalTypeId::INTEGER:
+	case LogicalTypeId::BIGINT:
+	case LogicalTypeId::UTINYINT:
+	case LogicalTypeId::USMALLINT:
+	case LogicalTypeId::UINTEGER:
+		return LogicalType::BIGINT;
+	case LogicalTypeId::FLOAT:
+	case LogicalTypeId::DOUBLE:
+		return LogicalType::DOUBLE;
+	case LogicalTypeId::BLOB:
+		return LogicalType::BLOB;
+	default:
+		return LogicalType::VARCHAR;
+	}
 }
 
 LogicalType SQLiteUtils::TypeToLogicalType(const string &sqlite_type) {

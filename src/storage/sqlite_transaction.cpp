@@ -3,6 +3,8 @@
 #include "storage/sqlite_schema_entry.hpp"
 #include "storage/sqlite_table_entry.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
+#include "duckdb/parser/parsed_data/create_view_info.hpp"
+#include "duckdb/catalog/catalog_entry/view_catalog_entry.hpp"
 
 namespace duckdb {
 
@@ -41,22 +43,40 @@ SQLiteTransaction &SQLiteTransaction::Get(ClientContext &context, Catalog &catal
 	return (SQLiteTransaction &)Transaction::Get(context, catalog);
 }
 
-SQLiteTableEntry *SQLiteTransaction::GetTable(const string &table_name) {
+CatalogEntry *SQLiteTransaction::GetTableOrView(const string &table_name) {
 	auto entry = tables.find(table_name);
 	if (entry == tables.end()) {
 		// table catalog entry not found - look up table in main SQLite database
-		CreateTableInfo info(sqlite_catalog.GetMainSchema(), table_name);
-		// FIXME: all_varchar from config
-		db->GetTableInfo(table_name, info.columns, info.constraints, false);
-		if (info.columns.empty()) {
-			// table not found in SQLite database
+		auto type = db->GetTableOrView(table_name);
+		if (type == CatalogType::INVALID) {
+			// no table or view found
 			return nullptr;
 		}
+		unique_ptr<CatalogEntry> result;
+		switch (type) {
+		case CatalogType::TABLE_ENTRY: {
+			CreateTableInfo info(sqlite_catalog.GetMainSchema(), table_name);
+			// FIXME: all_varchar from config
+			db->GetTableInfo(table_name, info.columns, info.constraints, false);
+			D_ASSERT(!info.columns.empty());
 
-		auto table = make_unique<SQLiteTableEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), info);
-		auto result = table.get();
-		tables[table_name] = move(table);
-		return result;
+			result = make_unique<SQLiteTableEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), info);
+			break;
+		}
+		case CatalogType::VIEW_ENTRY: {
+			string sql;
+			db->GetViewInfo(table_name, sql);
+
+			auto view_info = CreateViewInfo::FromCreateView(*context.lock(), sql);
+			result = make_unique<ViewCatalogEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), view_info.get());
+			break;
+		}
+		default:
+			throw InternalException("Unrecognized table type");
+		}
+		auto result_ptr = result.get();
+		tables[table_name] = move(result);
+		return result_ptr;
 	} else {
 		return entry->second.get();
 	}
@@ -66,9 +86,19 @@ void SQLiteTransaction::ClearTableEntry(const string &table_name) {
 	tables.erase(table_name);
 }
 
-string GetDropSQL(const string &table_name, bool cascade) {
+string GetDropSQL(CatalogType type, const string &table_name, bool cascade) {
 	string result;
-	result = "DROP TABLE ";
+	result = "DROP ";
+	switch (type) {
+	case CatalogType::TABLE_ENTRY:
+		result += "TABLE ";
+		break;
+	case CatalogType::VIEW_ENTRY:
+		result += "VIEW ";
+		break;
+	default:
+		throw InternalException("Unsupported type for drop");
+	}
 	result += KeywordHelper::WriteOptionallyQuoted(table_name);
 	if (cascade) {
 		result += " CASCADE";
@@ -76,9 +106,9 @@ string GetDropSQL(const string &table_name, bool cascade) {
 	return result;
 }
 
-void SQLiteTransaction::DropTable(const string &table_name, bool cascade) {
+void SQLiteTransaction::DropTableOrView(CatalogType type, const string &table_name, bool cascade) {
 	tables.erase(table_name);
-	db->Execute(GetDropSQL(table_name, cascade));
+	db->Execute(GetDropSQL(type, table_name, cascade));
 }
 
 } // namespace duckdb

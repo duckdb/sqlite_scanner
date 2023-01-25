@@ -26,8 +26,8 @@ public:
 	void Rollback();
 
 	SQLiteDB &GetDB();
-	SQLiteTableEntry *GetTable(const string &table_name);
-	void DropTable(const string &table_name, bool cascade);
+	CatalogEntry *GetTableOrView(const string &table_name);
+	void DropTableOrView(CatalogType type, const string &table_name, bool cascade);
 	void ClearTableEntry(const string &table_name);
 
 	static SQLiteTransaction &Get(ClientContext &context, Catalog &catalog);
@@ -36,7 +36,7 @@ private:
 	SQLiteCatalog &sqlite_catalog;
 	SQLiteDB *db;
 	SQLiteDB owned_db;
-	case_insensitive_map_t<unique_ptr<SQLiteTableEntry>> tables;
+	case_insensitive_map_t<unique_ptr<CatalogEntry>> tables;
 };
 
 } // namespace duckdb

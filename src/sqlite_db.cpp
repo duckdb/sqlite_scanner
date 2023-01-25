@@ -46,12 +46,20 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 SQLiteStatement SQLiteDB::Prepare(const string &query) {
 	SQLiteStatement stmt;
 	stmt.db = db;
-	SQLiteUtils::Check(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt.stmt, nullptr), db);
+	auto rc = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt.stmt, nullptr);
+	if (rc != SQLITE_OK) {
+		string error = "Failed to prepare query \"" + query + "\": " + string(sqlite3_errmsg(db));
+		throw std::runtime_error(error);
+	}
 	return stmt;
 }
 
 void SQLiteDB::Execute(const string &query) {
-	SQLiteUtils::Check(sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr), db);
+	auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+	if (rc != SQLITE_OK) {
+		string error = "Failed to execute query \"" + query + "\": " + string(sqlite3_errmsg(db));
+		throw std::runtime_error(error);
+	}
 }
 
 bool SQLiteDB::IsOpen() {
@@ -62,7 +70,10 @@ void SQLiteDB::Close() {
 	if (!IsOpen()) {
 		return;
 	}
-	sqlite3_close(db);
+	auto rc = sqlite3_close_v2(db);
+	if (rc == SQLITE_BUSY) {
+		throw InternalException("Failed to close database - SQLITE_BUSY");
+	}
 	db = nullptr;
 }
 
@@ -76,6 +87,34 @@ vector<string> SQLiteDB::GetTables() {
 	return result;
 }
 
+CatalogType SQLiteDB::GetTableOrView(const string &name) {
+	SQLiteStatement stmt;
+	stmt = Prepare(
+	    StringUtil::Format("SELECT type FROM sqlite_master WHERE name='%s';", SQLiteUtils::SanitizeString(name)));
+	while (stmt.Step()) {
+		auto type = stmt.GetValue<string>(0);
+		if (type == "table") {
+			return CatalogType::TABLE_ENTRY;
+		} else if (type == "view") {
+			return CatalogType::VIEW_ENTRY;
+		} else {
+			throw InternalException("Unrecognized SQLite type \"%s\"", name);
+		}
+	}
+	return CatalogType::INVALID;
+}
+
+void SQLiteDB::GetViewInfo(const string &view_name, string &sql) {
+	SQLiteStatement stmt;
+	stmt = Prepare(
+	    StringUtil::Format("SELECT sql FROM sqlite_master WHERE name='%s';", SQLiteUtils::SanitizeString(view_name)));
+	while (stmt.Step()) {
+		sql = stmt.GetValue<string>(0);
+		return;
+	}
+	throw InternalException("GetViewInfo - view \"%s\" not found", view_name);
+}
+
 void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints,
                             bool all_varchar) {
 	SQLiteStatement stmt;
@@ -83,7 +122,9 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 	idx_t primary_key_index = idx_t(-1);
 	vector<string> primary_keys;
 
-	stmt = Prepare(StringUtil::Format("PRAGMA table_info(\"%s\")", SQLiteUtils::SanitizeIdentifier(table_name)));
+	bool found = false;
+
+	stmt = Prepare(StringUtil::Format("PRAGMA table_info('%s')", SQLiteUtils::SanitizeString(table_name)));
 	while (stmt.Step()) {
 		auto cid = stmt.GetValue<int>(0);
 		auto sqlite_colname = stmt.GetValue<string>(1);
@@ -110,6 +151,10 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 			primary_key_index = cid;
 			primary_keys.push_back(sqlite_colname);
 		}
+		found = true;
+	}
+	if (!found) {
+		throw InternalException("GetTableInfo - table \"%s\" not found", table_name);
 	}
 	if (!primary_keys.empty()) {
 		if (primary_keys.size() == 1) {

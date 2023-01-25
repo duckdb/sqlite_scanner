@@ -3,6 +3,7 @@
 #include "storage/sqlite_transaction.hpp"
 #include "duckdb/catalog/dependency_list.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
+#include "duckdb/parser/parsed_data/create_view_info.hpp"
 #include "duckdb/planner/parsed_data/bound_create_table_info.hpp"
 #include "duckdb/parser/parsed_data/drop_info.hpp"
 #include "duckdb/parser/constraints/list.hpp"
@@ -23,8 +24,21 @@ SQLiteTransaction &GetSQLiteTransaction(CatalogTransaction transaction) {
 }
 
 string GetCreateTableSQL(Catalog *catalog, SchemaCatalogEntry *schema, CreateTableInfo &info) {
+	for (idx_t i = 0; i < info.columns.LogicalColumnCount(); i++) {
+		auto &col = info.columns.GetColumnMutable(LogicalIndex(i));
+		col.SetType(SQLiteUtils::ToSQLiteType(col.GetType()));
+	}
 	auto result = make_unique<SQLiteTableEntry>(catalog, schema, info);
 	return result->ToSQL();
+}
+
+void SQLiteSchemaEntry::TryDropEntry(ClientContext &context, CatalogType catalog_type, const string &name) {
+	DropInfo info;
+	info.type = catalog_type;
+	info.name = name;
+	info.cascade = false;
+	info.if_exists = true;
+	DropEntry(context, &info);
 }
 
 CatalogEntry *SQLiteSchemaEntry::CreateTable(CatalogTransaction transaction, BoundCreateTableInfo *info) {
@@ -33,19 +47,79 @@ CatalogEntry *SQLiteSchemaEntry::CreateTable(CatalogTransaction transaction, Bou
 	auto table_name = base_info.table;
 	if (base_info.on_conflict == OnCreateConflict::REPLACE_ON_CONFLICT) {
 		// CREATE OR REPLACE - drop any existing entries first (if any)
-		DropInfo info;
-		info.type = CatalogType::TABLE_ENTRY;
-		info.name = table_name;
-		info.cascade = false;
-		info.if_exists = true;
-		DropEntry(transaction.GetContext(), &info);
+		TryDropEntry(transaction.GetContext(), CatalogType::TABLE_ENTRY, table_name);
 	}
 	sqlite_transaction.GetDB().Execute(GetCreateTableSQL(catalog, this, base_info));
 	return GetEntry(transaction, CatalogType::TABLE_ENTRY, table_name);
 }
 
 CatalogEntry *SQLiteSchemaEntry::CreateFunction(CatalogTransaction transaction, CreateFunctionInfo *info) {
-	throw InternalException("CreateFunction");
+	throw BinderException("SQLite databases do not support creating functions");
+}
+
+CatalogEntry *SQLiteSchemaEntry::CreateIndex(ClientContext &context, CreateIndexInfo *info, TableCatalogEntry *table) {
+	throw InternalException("CreateIndex");
+}
+
+string GetCreateViewSQL(CreateViewInfo &info) {
+	string sql;
+	sql = "CREATE VIEW ";
+	if (info.on_conflict == OnCreateConflict::IGNORE_ON_CONFLICT) {
+		sql += "IF NOT EXISTS ";
+	}
+	sql += KeywordHelper::WriteOptionallyQuoted(info.view_name);
+	sql += " ";
+	if (!info.aliases.empty()) {
+		sql += "(";
+		for (idx_t i = 0; i < info.aliases.size(); i++) {
+			if (i > 0) {
+				sql += ", ";
+			}
+			auto &alias = info.aliases[i];
+			sql += KeywordHelper::WriteOptionallyQuoted(alias);
+		}
+		sql += ") ";
+	}
+	sql += "AS ";
+	sql += info.query->ToString();
+	return sql;
+}
+
+CatalogEntry *SQLiteSchemaEntry::CreateView(CatalogTransaction transaction, CreateViewInfo *info) {
+	if (info->sql.empty()) {
+		throw BinderException("Cannot create view in SQLite that originated from an empty SQL statement");
+	}
+	if (info->on_conflict == OnCreateConflict::REPLACE_ON_CONFLICT) {
+		// CREATE OR REPLACE - drop any existing entries first (if any)
+		TryDropEntry(transaction.GetContext(), CatalogType::VIEW_ENTRY, info->view_name);
+	}
+	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
+	sqlite_transaction.GetDB().Execute(GetCreateViewSQL(*info));
+	return GetEntry(transaction, CatalogType::VIEW_ENTRY, info->view_name);
+}
+
+CatalogEntry *SQLiteSchemaEntry::CreateSequence(CatalogTransaction transaction, CreateSequenceInfo *info) {
+	throw BinderException("SQLite databases do not support creating sequences");
+}
+
+CatalogEntry *SQLiteSchemaEntry::CreateTableFunction(CatalogTransaction transaction, CreateTableFunctionInfo *info) {
+	throw BinderException("SQLite databases do not support creating table functions");
+}
+
+CatalogEntry *SQLiteSchemaEntry::CreateCopyFunction(CatalogTransaction transaction, CreateCopyFunctionInfo *info) {
+	throw BinderException("SQLite databases do not support creating copy functions");
+}
+
+CatalogEntry *SQLiteSchemaEntry::CreatePragmaFunction(CatalogTransaction transaction, CreatePragmaFunctionInfo *info) {
+	throw BinderException("SQLite databases do not support creating pragma functions");
+}
+
+CatalogEntry *SQLiteSchemaEntry::CreateCollation(CatalogTransaction transaction, CreateCollationInfo *info) {
+	throw BinderException("SQLite databases do not support creating collations");
+}
+
+CatalogEntry *SQLiteSchemaEntry::CreateType(CatalogTransaction transaction, CreateTypeInfo *info) {
+	throw BinderException("SQLite databases do not support creating types");
 }
 
 void SQLiteSchemaEntry::AlterTable(SQLiteTransaction &sqlite_transaction, RenameTableInfo &info) {
@@ -122,8 +196,8 @@ void SQLiteSchemaEntry::Alter(ClientContext &context, AlterInfo *info) {
 
 void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type,
                              const std::function<void(CatalogEntry *)> &callback) {
-	if (type != CatalogType::TABLE_ENTRY) {
-		throw BinderException("Only tables are supported for now");
+	if (type != CatalogType::TABLE_ENTRY && type != CatalogType::VIEW_ENTRY) {
+		throw BinderException("Only tables and views are supported for now");
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *catalog);
 	auto tables = transaction.GetDB().GetTables();
@@ -136,23 +210,26 @@ void SQLiteSchemaEntry::Scan(CatalogType type, const std::function<void(CatalogE
 }
 
 void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo *info) {
-	if (info->type != CatalogType::TABLE_ENTRY) {
-		throw BinderException("Only tables are supported for now");
+	if (info->type != CatalogType::TABLE_ENTRY && info->type != CatalogType::VIEW_ENTRY) {
+		throw BinderException("Only tables and views are supported for now");
 	}
 	auto table = GetEntry(GetCatalogTransaction(context), info->type, info->name);
 	if (!table) {
 		throw InternalException("Failed to drop entry \"%s\" - could not find entry", info->name);
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *catalog);
-	transaction.DropTable(info->name, info->cascade);
+	transaction.DropTableOrView(info->type, info->name, info->cascade);
 }
 
 CatalogEntry *SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type, const string &name) {
-	if (type != CatalogType::TABLE_ENTRY) {
+	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
+	switch (type) {
+	case CatalogType::TABLE_ENTRY:
+	case CatalogType::VIEW_ENTRY:
+		return sqlite_transaction.GetTableOrView(name);
+	default:
 		return nullptr;
 	}
-	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
-	return sqlite_transaction.GetTable(name);
 }
 
 } // namespace duckdb

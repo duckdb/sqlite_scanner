@@ -24,17 +24,17 @@ SQLite databases do not support creating functions
 statement error
 DROP MACRO s.plus1
 ----
-do not support
+does not exist
 
 statement error
 SELECT s.plus1(42);
 ----
-do not support
+does not exist
 
 statement error
 SELECT s.plus1(42) over ();
 ----
-do not support
+does not exist
 
 # sequences
 statement error
@@ -45,12 +45,15 @@ SQLite databases do not support creating sequences
 statement error
 SELECT nextval('s.seq')
 ----
-do not support entries of type "Sequence"
+does not exist
 
 statement error
 DROP SEQUENCE s.seq
 ----
-do not support entries of type "Sequence"
+does not exist
+
+statement ok
+DROP SEQUENCE IF EXISTS s.seq
 
 # types
 statement error
@@ -61,4 +64,4 @@ SQLite databases do not support creating types
 statement error
 SELECT 'a'::"s.my_type"
 ----
-do not support entries of type "Type"
+does not exist

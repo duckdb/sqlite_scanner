@@ -21,7 +21,6 @@ INSERT INTO s1.test VALUES (42);
 UNIQUE constraint
 
 # SQLite accepts NULL values in primary key tables
-# they are automatically converted into the primary key + 1
 statement ok
 INSERT INTO s1.test VALUES (NULL);
 
@@ -29,7 +28,7 @@ query I
 SELECT * FROM s1.test
 ----
 42
-43
+NULL
 
 # unique constraint
 statement ok

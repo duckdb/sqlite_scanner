@@ -30,8 +30,16 @@ string GetCreateTableSQL(Catalog *catalog, SchemaCatalogEntry *schema, CreateTab
 		auto &col = info.columns.GetColumnMutable(LogicalIndex(i));
 		col.SetType(SQLiteUtils::ToSQLiteType(col.GetType()));
 	}
-	auto result = make_unique<SQLiteTableEntry>(catalog, schema, info);
-	return result->ToSQL();
+
+	std::stringstream ss;
+	ss << "CREATE TABLE ";
+	if (info.on_conflict == OnCreateConflict::IGNORE_ON_CONFLICT) {
+		ss << "IF NOT EXISTS ";
+	}
+	ss << KeywordHelper::WriteOptionallyQuoted(info.table);
+	ss << TableCatalogEntry::ColumnsToSQL(info.columns, info.constraints);
+	ss << ";";
+	return ss.str();
 }
 
 void SQLiteSchemaEntry::TryDropEntry(ClientContext &context, CatalogType catalog_type, const string &name) {
@@ -51,6 +59,7 @@ CatalogEntry *SQLiteSchemaEntry::CreateTable(CatalogTransaction transaction, Bou
 		// CREATE OR REPLACE - drop any existing entries first (if any)
 		TryDropEntry(transaction.GetContext(), CatalogType::TABLE_ENTRY, table_name);
 	}
+
 	sqlite_transaction.GetDB().Execute(GetCreateTableSQL(catalog, this, base_info));
 	return GetEntry(transaction, CatalogType::TABLE_ENTRY, table_name);
 }
@@ -243,7 +252,8 @@ void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type,
 		entries = transaction.GetDB().GetEntries("index");
 		break;
 	default:
-		throw BinderException("SQLite databases do not support entries of type \"%s\"", CatalogTypeToString(type));
+		// no entries of this catalog type
+		return;
 	}
 	for (auto &entry_name : entries) {
 		callback(GetEntry(GetCatalogTransaction(context), type, entry_name));

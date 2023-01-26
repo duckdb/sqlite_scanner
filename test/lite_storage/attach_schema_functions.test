@@ -1,0 +1,33 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH '__TEST_DIR__/attach_schema_functions.db' AS s (TYPE SQLITE)
+
+statement ok
+CREATE TABLE s.integers(i INTEGER PRIMARY KEY, j INTEGER);
+
+statement ok
+CREATE INDEX i_index ON s.integers(j)
+
+statement ok
+CREATE VIEW s.v1 AS SELECT 42
+
+statement ok
+SELECT * FROM duckdb_functions()
+
+#query I
+#SELECT * FROM sqlite_master
+#----
+
+# sqlite_master
+# duckdb_tables
+# duckdb_schemas
+# duckdb_views
+# duckdb_indexes
+# duckdb_columns
+# duckdb_constraints
+# duckdb_functions
+# PRAGMA database_size
+# PRAGMA storage_info
+# PRAGMA table_info

@@ -2,7 +2,7 @@ statement ok
 LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
 
 statement ok
-ATTACH '__TEST_DIR__/attach_describe.db' AS s1 (TYPE SQLITE)
+ATTACH '__TEST_DIR__/attach_rowid.db' AS s1 (TYPE SQLITE)
 
 statement ok
 CREATE TABLE s1.test(i INT);

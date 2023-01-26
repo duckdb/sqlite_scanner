@@ -93,8 +93,8 @@ vector<string> SQLiteDB::GetTables() {
 
 CatalogType SQLiteDB::GetEntryType(const string &name) {
 	SQLiteStatement stmt;
-	stmt = Prepare(
-	    StringUtil::Format("SELECT type FROM sqlite_master WHERE name='%s';", SQLiteUtils::SanitizeString(name)));
+	stmt = Prepare(StringUtil::Format("SELECT type FROM sqlite_master WHERE lower(name)=lower('%s');",
+	                                  SQLiteUtils::SanitizeString(name)));
 	while (stmt.Step()) {
 		auto type = stmt.GetValue<string>(0);
 		if (type == "table") {

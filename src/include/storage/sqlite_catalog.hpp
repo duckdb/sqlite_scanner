@@ -48,6 +48,8 @@ public:
 	unique_ptr<LogicalOperator> BindCreateIndex(Binder &binder, CreateStatement &stmt, TableCatalogEntry &table,
 	                                            unique_ptr<LogicalOperator> plan) override;
 
+	DatabaseSize GetDatabaseSize(ClientContext &context) override;
+
 	//! Whether or not this is an in-memory SQLite database
 	bool InMemory();
 	//! Returns a reference to the in-memory database (if any)

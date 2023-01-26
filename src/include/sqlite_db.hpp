@@ -38,7 +38,8 @@ public:
 	void GetTableInfo(const string &table_name, ColumnList &columns, vector<unique_ptr<Constraint>> &constraints,
 	                  bool all_varchar);
 	void GetViewInfo(const string &view_name, string &sql);
-
+	void GetIndexInfo(const string &index_name, string &sql, string &table_name);
+	idx_t RunPragma(string pragma_name);
 	idx_t GetMaxRowId(const string &table_name);
 	bool ColumnExists(const string &table_name, const string &column_name);
 

@@ -1,5 +1,6 @@
 #include "storage/sqlite_transaction.hpp"
 #include "storage/sqlite_catalog.hpp"
+#include "storage/sqlite_index_entry.hpp"
 #include "storage/sqlite_schema_entry.hpp"
 #include "storage/sqlite_table_entry.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
@@ -71,6 +72,7 @@ CatalogEntry *SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
 		db->GetViewInfo(entry_name, sql);
 
 		auto view_info = CreateViewInfo::FromCreateView(*context.lock(), sql);
+		view_info->internal = false;
 		result = make_unique<ViewCatalogEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), view_info.get());
 		break;
 	}
@@ -78,7 +80,14 @@ CatalogEntry *SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
 		CreateIndexInfo info;
 		info.index_name = entry_name;
 
-		result = make_unique<IndexCatalogEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), &info);
+		string table_name;
+		string sql;
+		db->GetIndexInfo(entry_name, sql, table_name);
+
+		auto index_entry = make_unique<SQLiteIndexEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), &info,
+		                                                 std::move(table_name));
+		index_entry->sql = std::move(sql);
+		result = std::move(index_entry);
 		break;
 	}
 	default:

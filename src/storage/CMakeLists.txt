@@ -3,6 +3,7 @@ add_library(
   sqlite_catalog.cpp
   sqlite_delete.cpp
   sqlite_index.cpp
+  sqlite_index_entry.cpp
   sqlite_insert.cpp
   sqlite_table_entry.cpp
   sqlite_schema_entry.cpp

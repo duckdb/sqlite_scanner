@@ -245,8 +245,10 @@ void SQLiteSchemaEntry::Scan(ClientContext &context, CatalogType type,
 	vector<string> entries;
 	switch (type) {
 	case CatalogType::TABLE_ENTRY:
-	case CatalogType::VIEW_ENTRY:
 		entries = transaction.GetDB().GetTables();
+		break;
+	case CatalogType::VIEW_ENTRY:
+		entries = transaction.GetDB().GetEntries("view");
 		break;
 	case CatalogType::INDEX_ENTRY:
 		entries = transaction.GetDB().GetEntries("index");

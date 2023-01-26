@@ -110,10 +110,22 @@ CatalogType SQLiteDB::GetEntryType(const string &name) {
 	return CatalogType::INVALID;
 }
 
+void SQLiteDB::GetIndexInfo(const string &index_name, string &sql, string &table_name) {
+	SQLiteStatement stmt;
+	stmt = Prepare(StringUtil::Format("SELECT tbl_name, sql FROM sqlite_master WHERE lower(name)=lower('%s');",
+	                                  SQLiteUtils::SanitizeString(index_name)));
+	while (stmt.Step()) {
+		table_name = stmt.GetValue<string>(0);
+		sql = stmt.GetValue<string>(1);
+		return;
+	}
+	throw InternalException("GetViewInfo - index \"%s\" not found", index_name);
+}
+
 void SQLiteDB::GetViewInfo(const string &view_name, string &sql) {
 	SQLiteStatement stmt;
-	stmt = Prepare(
-	    StringUtil::Format("SELECT sql FROM sqlite_master WHERE name='%s';", SQLiteUtils::SanitizeString(view_name)));
+	stmt = Prepare(StringUtil::Format("SELECT sql FROM sqlite_master WHERE lower(name)=lower('%s');",
+	                                  SQLiteUtils::SanitizeString(view_name)));
 	while (stmt.Step()) {
 		sql = stmt.GetValue<string>(0);
 		return;
@@ -191,6 +203,15 @@ idx_t SQLiteDB::GetMaxRowId(const string &table_name) {
 		throw std::runtime_error("could not find max rowid?");
 	}
 	return stmt.GetValue<int64_t>(0);
+}
+
+idx_t SQLiteDB::RunPragma(string pragma_name) {
+	SQLiteStatement stmt;
+	stmt = Prepare("PRAGMA " + pragma_name);
+	while (stmt.Step()) {
+		return idx_t(stmt.GetValue<int64_t>(0));
+	}
+	throw InternalException("No result returned from pragma " + pragma_name);
 }
 
 } // namespace duckdb

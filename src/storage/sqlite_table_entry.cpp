@@ -3,6 +3,7 @@
 #include "storage/sqlite_transaction.hpp"
 #include "duckdb/storage/statistics/base_statistics.hpp"
 #include "sqlite_scanner.hpp"
+#include "duckdb/storage/table_storage_info.hpp"
 
 namespace duckdb {
 
@@ -37,6 +38,14 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 
 	bind_data = move(result);
 	return SqliteScanFunction();
+}
+
+TableStorageInfo SQLiteTableEntry::GetStorageInfo(ClientContext &context) {
+	auto &transaction = (SQLiteTransaction &)Transaction::Get(context, *catalog);
+	auto &db = transaction.GetDB();
+	TableStorageInfo result;
+	result.cardinality = db.GetMaxRowId(name);
+	return result;
 }
 
 } // namespace duckdb

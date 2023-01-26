@@ -1,5 +1,8 @@
 #include "storage/sqlite_catalog.hpp"
 #include "storage/sqlite_schema_entry.hpp"
+#include "storage/sqlite_transaction.hpp"
+#include "sqlite_db.hpp"
+#include "duckdb/storage/database_size.hpp"
 
 namespace duckdb {
 
@@ -66,6 +69,20 @@ void SQLiteCatalog::ReleaseInMemoryDatabase() {
 
 void SQLiteCatalog::DropSchema(ClientContext &context, DropInfo *info) {
 	throw BinderException("SQLite databases do not support dropping schemas");
+}
+
+DatabaseSize SQLiteCatalog::GetDatabaseSize(ClientContext &context) {
+	DatabaseSize result;
+
+	auto &transaction = SQLiteTransaction::Get(context, *this);
+	auto &db = transaction.GetDB();
+	result.total_blocks = db.RunPragma("page_count");
+	result.block_size = db.RunPragma("page_size");
+	result.free_blocks = db.RunPragma("freelist_count");
+	result.used_blocks = result.total_blocks - result.free_blocks;
+	result.bytes = result.total_blocks * result.block_size;
+	result.wal_size = idx_t(-1);
+	return result;
 }
 
 } // namespace duckdb

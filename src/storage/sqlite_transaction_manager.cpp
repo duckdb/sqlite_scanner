@@ -1,4 +1,5 @@
 #include "storage/sqlite_transaction_manager.hpp"
+#include "duckdb/main/attached_database.hpp"
 
 namespace duckdb {
 
@@ -31,7 +32,9 @@ void SQLiteTransactionManager::RollbackTransaction(Transaction *transaction) {
 }
 
 void SQLiteTransactionManager::Checkpoint(ClientContext &context, bool force) {
-	throw InternalException("Checkpoint");
+	auto &transaction = SQLiteTransaction::Get(context, db.GetCatalog());
+	auto &db = transaction.GetDB();
+	db.Execute("PRAGMA wal_checkpoint");
 }
 
 } // namespace duckdb

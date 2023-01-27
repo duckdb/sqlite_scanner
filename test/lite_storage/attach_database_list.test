@@ -9,3 +9,14 @@ ATTACH '__TEST_DIR__/attach_dblist2.db' AS s2 (TYPE SQLITE)
 
 statement ok
 SELECT * FROM pragma_database_list();
+
+query I
+SELECT COUNT(*) FROM pragma_database_list() WHERE Name IN ('s1', 's2');
+----
+2
+
+query II
+SELECT name, split(split(file, '/')[-1], '\')[-1] FROM pragma_database_list() WHERE Name IN ('s1', 's2') ORDER BY name;
+----
+s1	attach_dblist1.db
+s2	attach_dblist2.db

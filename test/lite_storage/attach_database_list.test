@@ -1,0 +1,11 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH '__TEST_DIR__/attach_dblist1.db' AS s1 (TYPE SQLITE)
+
+statement ok
+ATTACH '__TEST_DIR__/attach_dblist2.db' AS s2 (TYPE SQLITE)
+
+statement ok
+SELECT * FROM pragma_database_list();

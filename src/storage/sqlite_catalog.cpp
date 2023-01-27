@@ -43,6 +43,10 @@ bool SQLiteCatalog::InMemory() {
 	return in_memory;
 }
 
+string SQLiteCatalog::GetDBPath() {
+	return path;
+}
+
 SQLiteDB *SQLiteCatalog::GetInMemoryDatabase() {
 	if (!InMemory()) {
 		throw InternalException("GetInMemoryDatabase() called on a non-in-memory database");

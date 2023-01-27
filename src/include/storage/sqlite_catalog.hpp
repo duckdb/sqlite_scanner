@@ -51,7 +51,9 @@ public:
 	DatabaseSize GetDatabaseSize(ClientContext &context) override;
 
 	//! Whether or not this is an in-memory SQLite database
-	bool InMemory();
+	bool InMemory() override;
+	string GetDBPath() override;
+
 	//! Returns a reference to the in-memory database (if any)
 	SQLiteDB *GetInMemoryDatabase();
 	//! Release the in-memory database (if there is any)

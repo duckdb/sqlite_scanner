@@ -1,0 +1,34 @@
+statement ok
+LOAD 'build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH 'chinook.db' (TYPE SQLITE, READ_ONLY)
+
+query III
+SELECT * FROM chinook.albums LIMIT 10;
+----
+1	For Those About To Rock We Salute You	1
+2	Balls to the Wall	2
+3	Restless and Wild	2
+4	Let There Be Rock	1
+5	Big Ones	3
+6	Jagged Little Pill	4
+7	Facelift	5
+8	Warner 25 Anos	6
+9	Plays Metallica By Four Cellos	7
+10	Audioslave	8
+
+statement error
+SELECT * FROM chinook.albumz
+----
+albums
+
+statement error
+CREATE TABLE chinook.test(i INTEGER)
+----
+read-only mode
+
+statement error
+INSERT INTO chinook.albums VALUES (NULL, NULL, NULL);
+----
+read-only mode

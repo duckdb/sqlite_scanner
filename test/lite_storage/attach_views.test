@@ -1,0 +1,62 @@
+statement ok
+LOAD 'build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH '__TEST_DIR__/attach_views.db' AS s (TYPE SQLITE)
+
+statement ok
+USE s;
+
+statement ok
+CREATE VIEW v1 AS SELECT 42;
+
+query I
+SELECT * FROM v1
+----
+42
+
+statement error
+CREATE VIEW v1 AS SELECT 84;
+----
+view v1 already exists
+
+statement ok
+CREATE VIEW IF NOT EXISTS v1 AS SELECT 84;
+
+statement ok
+CREATE OR REPLACE VIEW v1 AS SELECT 84;
+
+query I
+SELECT * FROM v1
+----
+84
+
+statement ok
+DROP VIEW v1
+
+statement error
+SELECT * FROM v1
+----
+Table with name v1 does not exist
+
+statement error
+DROP VIEW v1
+----
+View with name v1 does not exist
+
+statement ok
+CREATE VIEW v1(a) AS SELECT 99;
+
+query I
+SELECT a FROM v1
+----
+99
+
+# special names
+statement ok
+CREATE VIEW "table "" table '' table"("column "" column '' column") AS SELECT 3
+
+query I
+SELECT "column "" column '' column" FROM "table "" table '' table"
+----
+3

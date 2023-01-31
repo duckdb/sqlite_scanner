@@ -33,12 +33,12 @@ release: pull
 	cmake --build . --config Release
 
 test: release
-	./build/release/test/unittest --test-dir . "[lite_scanner]"
+	./build/release/test/unittest --test-dir .
 
 format:
 	cp duckdb/.clang-format .
-	clang-format --sort-includes=0 -style=file -i sqlite_scanner.cpp
-	cmake-format -i CMakeLists.txt
+	find src -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i
+	find . -iname CMakeLists.txt | xargs cmake-format -i
 	rm .clang-format
 
 update:

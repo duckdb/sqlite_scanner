@@ -1,0 +1,44 @@
+statement ok
+LOAD 'build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+statement ok
+ATTACH '__TEST_DIR__/attach_defaults.db' AS s1 (TYPE SQLITE)
+
+statement ok
+CREATE TABLE s1.test(i INTEGER DEFAULT 42, j INTEGER);
+
+statement ok
+INSERT INTO s1.test (i) VALUES (3)
+
+statement ok
+INSERT INTO s1.test (j) VALUES (84)
+
+query II
+SELECT * FROM s1.test
+----
+3	NULL
+42	84
+
+statement ok
+INSERT INTO s1.test (j, i) VALUES (1, 10)
+
+statement ok
+INSERT INTO s1.test (i, j) VALUES (100, 1000)
+
+query II
+SELECT * FROM s1.test
+----
+3	NULL
+42	84
+10	1
+100	1000
+
+statement error
+INSERT INTO s1.test (zzz) VALUES (3)
+----
+does not have a column with name "zzz"
+
+statement error
+INSERT INTO s1.test (j, j, j) VALUES (1, 2, 3)
+----
+duplicate column name "j"

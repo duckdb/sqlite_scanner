@@ -1,5 +1,5 @@
 statement ok
-LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+LOAD 'build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
 
 statement ok
 ATTACH '__TEST_DIR__/attach_constraints.db' AS s1 (TYPE SQLITE)

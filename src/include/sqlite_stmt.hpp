@@ -10,6 +10,8 @@
 
 #include "sqlite_utils.hpp"
 
+#include <types>
+
 namespace duckdb {
 
 class SQLiteStatement {
@@ -63,6 +65,6 @@ void SQLiteStatement::Bind(idx_t col, int64_t value);
 template <>
 void SQLiteStatement::Bind(idx_t col, double value);
 template <>
-void SQLiteStatement::Bind(idx_t col, nullptr_t value);
+void SQLiteStatement::Bind(idx_t col, std::nullptr_t value);
 
 } // namespace duckdb

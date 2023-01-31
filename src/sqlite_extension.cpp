@@ -11,6 +11,20 @@
 
 using namespace duckdb;
 
+namespace duckdb {
+
+struct SQLiteReplacementOpen : public ReplacementOpenData {
+	bool HasStorageExtension() override {
+		return true;
+	}
+
+	unique_ptr<StorageExtension> GetStorageExtension(AttachInfo &info) override {
+		return make_unique<SQLiteStorageExtension>();
+	}
+};
+
+} // namespace duckdb
+
 extern "C" {
 DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
 	Connection con(db);
@@ -37,5 +51,14 @@ DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
 
 DUCKDB_EXTENSION_API const char *sqlite_scanner_version() {
 	return DuckDB::LibraryVersion();
+}
+
+unique_ptr<ReplacementOpenData> sqlite_scanner_replacement_open_pre(DBConfig &config,
+                                                                    ReplacementOpenStaticData *static_data) {
+	return make_unique<SQLiteReplacementOpen>();
+}
+
+void sqlite_scanner_replacement_open_post(DatabaseInstance &instance, ReplacementOpenData *open_data) {
+	throw InternalException("replacement_open_post should never be called");
 }
 }

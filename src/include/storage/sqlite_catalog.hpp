@@ -25,6 +25,9 @@ public:
 
 public:
 	void Initialize(bool load_builtin) override;
+	string GetCatalogType() override {
+		return "sqlite";
+	}
 
 	CatalogEntry *CreateSchema(CatalogTransaction transaction, CreateSchemaInfo *info) override;
 

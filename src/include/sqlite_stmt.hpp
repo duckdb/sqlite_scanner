@@ -10,7 +10,7 @@
 
 #include "sqlite_utils.hpp"
 
-#include <types>
+#include <cstddef>
 
 namespace duckdb {
 

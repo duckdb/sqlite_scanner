@@ -9,7 +9,7 @@
 namespace duckdb {
 
 SQLiteUpdate::SQLiteUpdate(LogicalOperator &op, TableCatalogEntry &table, vector<PhysicalIndex> columns_p)
-    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), columns(move(columns_p)) {
+    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), columns(std::move(columns_p)) {
 }
 
 //===--------------------------------------------------------------------===//
@@ -125,7 +125,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanUpdate(ClientContext &context, L
 			throw BinderException("SET DEFAULT is not yet supported for updates of a SQLite table");
 		}
 	}
-	auto insert = make_unique<SQLiteUpdate>(op, *op.table, move(op.columns));
+	auto insert = make_unique<SQLiteUpdate>(op, *op.table, std::move(op.columns));
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

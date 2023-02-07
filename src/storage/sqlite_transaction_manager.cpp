@@ -12,7 +12,7 @@ Transaction *SQLiteTransactionManager::StartTransaction(ClientContext &context) 
 	transaction->Start();
 	auto result = transaction.get();
 	lock_guard<mutex> l(transaction_lock);
-	transactions[result] = move(transaction);
+	transactions[result] = std::move(transaction);
 	return result;
 }
 

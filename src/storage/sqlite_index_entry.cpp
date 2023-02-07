@@ -5,7 +5,7 @@ namespace duckdb {
 
 SQLiteIndexEntry::SQLiteIndexEntry(Catalog *catalog, SchemaCatalogEntry *schema, CreateIndexInfo *info,
                                    string table_name_p)
-    : IndexCatalogEntry(catalog, schema, info), table_name(move(table_name_p)) {
+    : IndexCatalogEntry(catalog, schema, info), table_name(std::move(table_name_p)) {
 }
 
 string SQLiteIndexEntry::GetSchemaName() {

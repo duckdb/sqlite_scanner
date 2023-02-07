@@ -16,7 +16,7 @@ namespace duckdb {
 SQLiteInsert::SQLiteInsert(LogicalOperator &op, TableCatalogEntry *table,
                            physical_index_vector_t<idx_t> column_index_map_p)
     : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), schema(nullptr),
-      column_index_map(move(column_index_map_p)) {
+      column_index_map(std::move(column_index_map_p)) {
 }
 
 SQLiteInsert::SQLiteInsert(LogicalOperator &op, SchemaCatalogEntry *schema, unique_ptr<BoundCreateTableInfo> info)
@@ -205,7 +205,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanCreateTableAs(ClientContext &con
                                                               unique_ptr<PhysicalOperator> plan) {
 	plan = AddCastToSQLiteTypes(context, std::move(plan));
 
-	auto insert = make_unique<SQLiteInsert>(op, op.schema, move(op.info));
+	auto insert = make_unique<SQLiteInsert>(op, op.schema, std::move(op.info));
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

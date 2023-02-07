@@ -151,14 +151,14 @@ SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, G
 	if (!SqliteParallelStateNext(context.client, input.bind_data, *result, gstate)) {
 		result->done = true;
 	}
-	return move(result);
+	return std::move(result);
 }
 
 static unique_ptr<GlobalTableFunctionState> SqliteInitGlobalState(ClientContext &context,
                                                                   TableFunctionInitInput &input) {
 	auto result = make_unique<SqliteGlobalState>(SqliteMaxThreads(context, input.bind_data));
 	result->position = 0;
-	return move(result);
+	return std::move(result);
 }
 
 static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChunk &output) {
@@ -282,9 +282,9 @@ static unique_ptr<FunctionData> AttachBind(ClientContext &context, TableFunction
 		}
 	}
 
-	return_types.push_back(LogicalType::BOOLEAN);
+	return_types.emplace_back(LogicalType::BOOLEAN);
 	names.emplace_back("Success");
-	return move(result);
+	return std::move(result);
 }
 
 static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {

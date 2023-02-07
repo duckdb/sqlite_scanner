@@ -12,6 +12,7 @@
 using namespace duckdb;
 
 extern "C" {
+
 DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
 	Connection con(db);
 	con.BeginTransaction();
@@ -39,8 +40,8 @@ DUCKDB_EXTENSION_API const char *sqlite_scanner_version() {
 	return DuckDB::LibraryVersion();
 }
 
-bool sqlite_scanner_storage_init(DBConfig &config) {
+DUCKDB_EXTENSION_API void sqlite_scanner_storage_init(DBConfig &config) {
 	config.storage_extensions["sqlite_scanner"] = make_unique<SQLiteStorageExtension>();
-	return true;
 }
+
 }

@@ -94,7 +94,7 @@ CatalogEntry *SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
 		throw InternalException("Unrecognized catalog entry type");
 	}
 	auto result_ptr = result.get();
-	catalog_entries[entry_name] = move(result);
+	catalog_entries[entry_name] = std::move(result);
 	return result_ptr;
 }
 

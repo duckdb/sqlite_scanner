@@ -43,14 +43,14 @@ void SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk &chunk, Glo
 class LogicalSQLiteCreateIndex : public LogicalExtensionOperator {
 public:
 	LogicalSQLiteCreateIndex(unique_ptr<CreateIndexInfo> info_p, TableCatalogEntry &table)
-	    : info(move(info_p)), table(table) {
+	    : info(std::move(info_p)), table(table) {
 	}
 
 	unique_ptr<CreateIndexInfo> info;
 	TableCatalogEntry &table;
 
 	unique_ptr<PhysicalOperator> CreatePlan(ClientContext &context, PhysicalPlanGenerator &generator) override {
-		return make_unique<SQLiteCreateIndex>(move(info), table);
+		return make_unique<SQLiteCreateIndex>(std::move(info), table);
 	}
 
 	void Serialize(FieldWriter &writer) const override {

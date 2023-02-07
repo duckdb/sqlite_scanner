@@ -82,7 +82,7 @@ vector<string> SQLiteDB::GetEntries(string entry_type) {
 	SQLiteStatement stmt = Prepare("SELECT name FROM sqlite_master WHERE type='" + entry_type + "'");
 	while (stmt.Step()) {
 		auto table_name = stmt.GetValue<string>(0);
-		result.push_back(move(table_name));
+		result.push_back(std::move(table_name));
 	}
 	return result;
 }
@@ -153,15 +153,15 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 		StringUtil::Trim(sqlite_type);
 		auto column_type = all_varchar ? LogicalType::VARCHAR : SQLiteUtils::TypeToLogicalType(sqlite_type);
 
-		ColumnDefinition column(move(sqlite_colname), move(column_type));
+		ColumnDefinition column(std::move(sqlite_colname), std::move(column_type));
 		if (!default_value.empty()) {
 			auto expressions = Parser::ParseExpressionList(default_value);
 			if (expressions.empty()) {
 				throw InternalException("Expression list is empty");
 			}
-			column.SetDefaultValue(move(expressions[0]));
+			column.SetDefaultValue(std::move(expressions[0]));
 		}
-		columns.AddColumn(move(column));
+		columns.AddColumn(std::move(column));
 		if (not_null) {
 			constraints.push_back(make_unique<NotNullConstraint>(LogicalIndex(cid)));
 		}
@@ -178,7 +178,7 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 		if (primary_keys.size() == 1) {
 			constraints.push_back(make_unique<UniqueConstraint>(LogicalIndex(primary_key_index), true));
 		} else {
-			constraints.push_back(make_unique<UniqueConstraint>(move(primary_keys), true));
+			constraints.push_back(make_unique<UniqueConstraint>(std::move(primary_keys), true));
 		}
 	}
 }

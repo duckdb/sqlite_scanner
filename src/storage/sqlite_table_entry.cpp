@@ -36,7 +36,7 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 		result->rows_per_group = idx_t(-1);
 	}
 
-	bind_data = move(result);
+	bind_data = std::move(result);
 	return SqliteScanFunction();
 }
 

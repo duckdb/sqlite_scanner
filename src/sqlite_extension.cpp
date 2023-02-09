@@ -43,5 +43,4 @@ DUCKDB_EXTENSION_API const char *sqlite_scanner_version() {
 DUCKDB_EXTENSION_API void sqlite_scanner_storage_init(DBConfig &config) {
 	config.storage_extensions["sqlite_scanner"] = make_unique<SQLiteStorageExtension>();
 }
-
 }

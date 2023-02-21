@@ -22,7 +22,7 @@ public:
 };
 
 unique_ptr<GlobalSourceState> SQLiteCreateIndex::GetGlobalSourceState(ClientContext &context) const {
-	return make_unique<SQLiteIndexSourceState>();
+	return make_uniq<SQLiteIndexSourceState>();
 }
 
 void SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
@@ -50,7 +50,7 @@ public:
 	TableCatalogEntry &table;
 
 	unique_ptr<PhysicalOperator> CreatePlan(ClientContext &context, PhysicalPlanGenerator &generator) override {
-		return make_unique<SQLiteCreateIndex>(std::move(info), table);
+		return make_uniq<SQLiteCreateIndex>(std::move(info), table);
 	}
 
 	void Serialize(FieldWriter &writer) const override {
@@ -64,8 +64,8 @@ public:
 
 unique_ptr<LogicalOperator> SQLiteCatalog::BindCreateIndex(Binder &binder, CreateStatement &stmt,
                                                            TableCatalogEntry &table, unique_ptr<LogicalOperator> plan) {
-	return make_unique<LogicalSQLiteCreateIndex>(unique_ptr_cast<CreateInfo, CreateIndexInfo>(std::move(stmt.info)),
-	                                             table);
+	return make_uniq<LogicalSQLiteCreateIndex>(unique_ptr_cast<CreateInfo, CreateIndexInfo>(std::move(stmt.info)),
+	                                           table);
 }
 
 } // namespace duckdb

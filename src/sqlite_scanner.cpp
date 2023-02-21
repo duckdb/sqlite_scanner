@@ -44,7 +44,7 @@ struct SqliteGlobalState : public GlobalTableFunctionState {
 static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunctionBindInput &input,
                                            vector<LogicalType> &return_types, vector<string> &names) {
 
-	auto result = make_unique<SqliteBindData>();
+	auto result = make_uniq<SqliteBindData>();
 	result->file_name = input.inputs[0].GetValue<string>();
 	result->table_name = input.inputs[1].GetValue<string>();
 
@@ -114,7 +114,7 @@ static unique_ptr<NodeStatistics> SqliteCardinality(ClientContext &context, cons
 	D_ASSERT(bind_data_p);
 
 	auto bind_data = (const SqliteBindData *)bind_data_p;
-	return make_unique<NodeStatistics>(bind_data->max_rowid);
+	return make_uniq<NodeStatistics>(bind_data->max_rowid);
 }
 
 static idx_t SqliteMaxThreads(ClientContext &context, const FunctionData *bind_data_p) {
@@ -145,7 +145,7 @@ static unique_ptr<LocalTableFunctionState>
 SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, GlobalTableFunctionState *global_state) {
 	auto bind_data = (const SqliteBindData *)input.bind_data;
 	auto &gstate = (SqliteGlobalState &)*global_state;
-	auto result = make_unique<SqliteLocalState>();
+	auto result = make_uniq<SqliteLocalState>();
 	result->column_ids = input.column_ids;
 	result->db = bind_data->global_db;
 	if (!SqliteParallelStateNext(context.client, input.bind_data, *result, gstate)) {
@@ -156,7 +156,7 @@ SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, G
 
 static unique_ptr<GlobalTableFunctionState> SqliteInitGlobalState(ClientContext &context,
                                                                   TableFunctionInitInput &input) {
-	auto result = make_unique<SqliteGlobalState>(SqliteMaxThreads(context, input.bind_data));
+	auto result = make_uniq<SqliteGlobalState>(SqliteMaxThreads(context, input.bind_data));
 	result->position = 0;
 	return std::move(result);
 }
@@ -248,7 +248,7 @@ SqliteStatistics(ClientContext &context, const FunctionData *bind_data_p,
   auto &bind_data = (SqliteBindData &)*bind_data_p;
   auto stats = BaseStatistics::CreateEmpty(bind_data.types[column_index]);
   stats->validity_stats =
-      make_unique<ValidityStatistics>(!bind_data.not_nulls[column_index]);
+      make_uniq<ValidityStatistics>(!bind_data.not_nulls[column_index]);
   return stats;
 }
 */
@@ -273,7 +273,7 @@ struct AttachFunctionData : public TableFunctionData {
 static unique_ptr<FunctionData> AttachBind(ClientContext &context, TableFunctionBindInput &input,
                                            vector<LogicalType> &return_types, vector<string> &names) {
 
-	auto result = make_unique<AttachFunctionData>();
+	auto result = make_uniq<AttachFunctionData>();
 	result->file_name = input.inputs[0].GetValue<string>();
 
 	for (auto &kv : input.named_parameters) {

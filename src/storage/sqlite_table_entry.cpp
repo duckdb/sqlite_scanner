@@ -28,7 +28,10 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 	auto &transaction = (SQLiteTransaction &)Transaction::Get(context, *catalog);
 	auto &db = transaction.GetDB();
 
-	result->max_rowid = db.GetMaxRowId(name);
+	if (!db.GetMaxRowId(name, result->max_rowid)) {
+		result->max_rowid = idx_t(-1);
+		result->rows_per_group = idx_t(-1);
+	}
 	if (!transaction.IsReadOnly() || sqlite_catalog->InMemory()) {
 		// for in-memory databases or if we have transaction-local changes we can only do a single-threaded scan
 		// set up the transaction's connection object as the global db
@@ -44,7 +47,10 @@ TableStorageInfo SQLiteTableEntry::GetStorageInfo(ClientContext &context) {
 	auto &transaction = (SQLiteTransaction &)Transaction::Get(context, *catalog);
 	auto &db = transaction.GetDB();
 	TableStorageInfo result;
-	result.cardinality = db.GetMaxRowId(name);
+	if (!db.GetMaxRowId(name, result.cardinality)) {
+		// probably
+		result.cardinality = 10000;
+	}
 	return result;
 }
 

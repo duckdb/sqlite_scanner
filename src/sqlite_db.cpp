@@ -39,7 +39,11 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 		// FIXME: we should just make sure we are not re-using the same `sqlite3` object across threads
 		flags |= SQLITE_OPEN_NOMUTEX;
 	}
-	SQLiteUtils::Check(sqlite3_open_v2(path.c_str(), &result.db, flags, nullptr), result.db);
+	flags |= SQLITE_OPEN_EXRESCODE;
+	auto rc = sqlite3_open_v2(path.c_str(), &result.db, flags, nullptr);
+	if (rc != SQLITE_OK) {
+		throw std::runtime_error("Unable to open database \"" + path + "\": " + string(sqlite3_errstr(rc)));
+	}
 	return result;
 }
 

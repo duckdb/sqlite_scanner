@@ -29,6 +29,7 @@ public:
 
 public:
 	static SQLiteDB Open(const string &path, bool is_read_only = true, bool is_shared = false);
+	bool TryPrepare(const string &query, SQLiteStatement &result);
 	SQLiteStatement Prepare(const string &query);
 	void Execute(const string &query);
 	vector<string> GetTables();
@@ -40,7 +41,8 @@ public:
 	void GetViewInfo(const string &view_name, string &sql);
 	void GetIndexInfo(const string &index_name, string &sql, string &table_name);
 	idx_t RunPragma(string pragma_name);
-	idx_t GetMaxRowId(const string &table_name);
+	//! Gets the max row id of a table, returns false if the table does not have a rowid column
+	bool GetMaxRowId(const string &table_name, idx_t &row_id);
 	bool ColumnExists(const string &table_name, const string &column_name);
 
 	bool IsOpen();

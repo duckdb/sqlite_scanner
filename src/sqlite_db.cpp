@@ -39,15 +39,26 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 		// FIXME: we should just make sure we are not re-using the same `sqlite3` object across threads
 		flags |= SQLITE_OPEN_NOMUTEX;
 	}
-	SQLiteUtils::Check(sqlite3_open_v2(path.c_str(), &result.db, flags, nullptr), result.db);
+	flags |= SQLITE_OPEN_EXRESCODE;
+	auto rc = sqlite3_open_v2(path.c_str(), &result.db, flags, nullptr);
+	if (rc != SQLITE_OK) {
+		throw std::runtime_error("Unable to open database \"" + path + "\": " + string(sqlite3_errstr(rc)));
+	}
 	return result;
+}
+
+bool SQLiteDB::TryPrepare(const string &query, SQLiteStatement &stmt) {
+	stmt.db = db;
+	auto rc = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt.stmt, nullptr);
+	if (rc != SQLITE_OK) {
+		return false;
+	}
+	return true;
 }
 
 SQLiteStatement SQLiteDB::Prepare(const string &query) {
 	SQLiteStatement stmt;
-	stmt.db = db;
-	auto rc = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt.stmt, nullptr);
-	if (rc != SQLITE_OK) {
+	if (!TryPrepare(query, stmt)) {
 		string error = "Failed to prepare query \"" + query + "\": " + string(sqlite3_errmsg(db));
 		throw std::runtime_error(error);
 	}
@@ -196,13 +207,17 @@ bool SQLiteDB::ColumnExists(const string &table_name, const string &column_name)
 	return false;
 }
 
-idx_t SQLiteDB::GetMaxRowId(const string &table_name) {
+bool SQLiteDB::GetMaxRowId(const string &table_name, idx_t &max_row_id) {
 	SQLiteStatement stmt;
-	stmt = Prepare(StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", SQLiteUtils::SanitizeIdentifier(table_name)));
-	if (!stmt.Step()) {
-		throw std::runtime_error("could not find max rowid?");
+	if (!TryPrepare(StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", SQLiteUtils::SanitizeIdentifier(table_name)),
+	                stmt)) {
+		return false;
 	}
-	return stmt.GetValue<int64_t>(0);
+	if (!stmt.Step()) {
+		return false;
+	}
+	max_row_id = stmt.GetValue<int64_t>(0);
+	return true;
 }
 
 idx_t SQLiteDB::RunPragma(string pragma_name) {

@@ -70,7 +70,10 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 		throw std::runtime_error("no columns for table " + result->table_name);
 	}
 
-	result->max_rowid = db.GetMaxRowId(result->table_name);
+	if (!db.GetMaxRowId(result->table_name, result->max_rowid)) {
+		result->max_rowid = idx_t(-1);
+		result->rows_per_group = idx_t(-1);
+	}
 
 	result->names = names;
 	result->types = return_types;

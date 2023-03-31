@@ -17,7 +17,7 @@ SQLiteCatalog::~SQLiteCatalog() {
 }
 
 void SQLiteCatalog::Initialize(bool load_builtin) {
-	main_schema = make_unique<SQLiteSchemaEntry>(this);
+	main_schema = make_uniq<SQLiteSchemaEntry>(this);
 }
 
 CatalogEntry *SQLiteCatalog::CreateSchema(CatalogTransaction transaction, CreateSchemaInfo *info) {

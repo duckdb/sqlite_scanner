@@ -12,6 +12,12 @@ ifeq (${OSX_BUILD_UNIVERSAL}, 1)
 endif
 BUILD_FLAGS=-DEXTENSION_STATIC_BUILD=1 -DBUILD_TPCH_EXTENSION=1 ${OSX_BUILD_UNIVERSAL_FLAG}
 
+DUCKDB_DIRECTORY=
+ifndef DUCKDB_DIR
+	DUCKDB_DIRECTORY=duckdb
+else
+	DUCKDB_DIRECTORY=${DUCKDB_DIR}
+endif
 
 pull:
 	git submodule init
@@ -36,7 +42,7 @@ test: release
 	./build/release/test/unittest --test-dir .
 
 format:
-	cp duckdb/.clang-format .
+	cp ${DUCKDB_DIRECTORY}/.clang-format .
 	find src -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i
 	find . -iname CMakeLists.txt | xargs cmake-format -i
 	rm .clang-format

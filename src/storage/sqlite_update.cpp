@@ -45,7 +45,7 @@ unique_ptr<GlobalSinkState> SQLiteUpdate::GetGlobalSinkState(ClientContext &cont
 	auto &sqlite_table = (SQLiteTableEntry &)table;
 
 	auto &transaction = SQLiteTransaction::Get(context, *sqlite_table.catalog);
-	auto result = make_unique<SQLiteUpdateGlobalState>(sqlite_table);
+	auto result = make_uniq<SQLiteUpdateGlobalState>(sqlite_table);
 	result->statement = transaction.GetDB().Prepare(GetUpdateSQL(sqlite_table, columns));
 	return std::move(result);
 }
@@ -86,7 +86,7 @@ public:
 };
 
 unique_ptr<GlobalSourceState> SQLiteUpdate::GetGlobalSourceState(ClientContext &context) const {
-	return make_unique<SQLiteUpdateSourceState>();
+	return make_uniq<SQLiteUpdateSourceState>();
 }
 
 void SQLiteUpdate::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
@@ -125,7 +125,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanUpdate(ClientContext &context, L
 			throw BinderException("SET DEFAULT is not yet supported for updates of a SQLite table");
 		}
 	}
-	auto insert = make_unique<SQLiteUpdate>(op, *op.table, std::move(op.columns));
+	auto insert = make_uniq<SQLiteUpdate>(op, *op.table, std::move(op.columns));
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

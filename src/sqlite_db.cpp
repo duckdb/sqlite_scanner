@@ -174,7 +174,7 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 		}
 		columns.AddColumn(std::move(column));
 		if (not_null) {
-			constraints.push_back(make_unique<NotNullConstraint>(LogicalIndex(cid)));
+			constraints.push_back(make_uniq<NotNullConstraint>(LogicalIndex(cid)));
 		}
 		if (pk) {
 			primary_key_index = cid;
@@ -187,9 +187,9 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 	}
 	if (!primary_keys.empty()) {
 		if (primary_keys.size() == 1) {
-			constraints.push_back(make_unique<UniqueConstraint>(LogicalIndex(primary_key_index), true));
+			constraints.push_back(make_uniq<UniqueConstraint>(LogicalIndex(primary_key_index), true));
 		} else {
-			constraints.push_back(make_unique<UniqueConstraint>(std::move(primary_keys), true));
+			constraints.push_back(make_uniq<UniqueConstraint>(std::move(primary_keys), true));
 		}
 	}
 }

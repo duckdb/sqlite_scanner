@@ -36,7 +36,7 @@ unique_ptr<GlobalSinkState> SQLiteDelete::GetGlobalSinkState(ClientContext &cont
 	auto &sqlite_table = (SQLiteTableEntry &)table;
 
 	auto &transaction = SQLiteTransaction::Get(context, *sqlite_table.catalog);
-	auto result = make_unique<SQLiteDeleteGlobalState>(sqlite_table);
+	auto result = make_uniq<SQLiteDeleteGlobalState>(sqlite_table);
 	result->statement = transaction.GetDB().Prepare(GetDeleteSQL(sqlite_table.name));
 	return std::move(result);
 }
@@ -69,7 +69,7 @@ public:
 };
 
 unique_ptr<GlobalSourceState> SQLiteDelete::GetGlobalSourceState(ClientContext &context) const {
-	return make_unique<SQLiteDeleteSourceState>();
+	return make_uniq<SQLiteDeleteSourceState>();
 }
 
 void SQLiteDelete::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
@@ -103,7 +103,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanDelete(ClientContext &context, L
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for deletion of a SQLite table");
 	}
-	auto insert = make_unique<SQLiteDelete>(op, *op.table);
+	auto insert = make_uniq<SQLiteDelete>(op, *op.table);
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

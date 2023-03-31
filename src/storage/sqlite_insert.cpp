@@ -87,7 +87,7 @@ unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &cont
 		insert_table = (SQLiteTableEntry *)table;
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *insert_table->catalog);
-	auto result = make_unique<SQLiteInsertGlobalState>(context, insert_table);
+	auto result = make_uniq<SQLiteInsertGlobalState>(context, insert_table);
 	result->statement = transaction.GetDB().Prepare(GetInsertSQL(*this, insert_table));
 	return std::move(result);
 }
@@ -122,7 +122,7 @@ public:
 };
 
 unique_ptr<GlobalSourceState> SQLiteInsert::GetGlobalSourceState(ClientContext &context) const {
-	return make_unique<SQLiteInsertSourceState>();
+	return make_uniq<SQLiteInsertSourceState>();
 }
 
 void SQLiteInsert::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
@@ -168,7 +168,7 @@ unique_ptr<PhysicalOperator> AddCastToSQLiteTypes(ClientContext &context, unique
 		for (idx_t i = 0; i < child_types.size(); i++) {
 			auto &type = child_types[i];
 			unique_ptr<Expression> expr;
-			expr = make_unique<BoundReferenceExpression>(type, i);
+			expr = make_uniq<BoundReferenceExpression>(type, i);
 
 			auto sqlite_type = SQLiteUtils::ToSQLiteType(type);
 			if (sqlite_type != type) {
@@ -179,8 +179,8 @@ unique_ptr<PhysicalOperator> AddCastToSQLiteTypes(ClientContext &context, unique
 			select_list.push_back(std::move(expr));
 		}
 		// we need to cast: add casts
-		auto proj = make_unique<PhysicalProjection>(std::move(sqlite_types), std::move(select_list),
-		                                            plan->estimated_cardinality);
+		auto proj =
+		    make_uniq<PhysicalProjection>(std::move(sqlite_types), std::move(select_list), plan->estimated_cardinality);
 		proj->children.push_back(std::move(plan));
 		plan = std::move(proj);
 	}
@@ -196,7 +196,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanInsert(ClientContext &context, L
 
 	plan = AddCastToSQLiteTypes(context, std::move(plan));
 
-	auto insert = make_unique<SQLiteInsert>(op, op.table, op.column_index_map);
+	auto insert = make_uniq<SQLiteInsert>(op, op.table, op.column_index_map);
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }
@@ -205,7 +205,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanCreateTableAs(ClientContext &con
                                                               unique_ptr<PhysicalOperator> plan) {
 	plan = AddCastToSQLiteTypes(context, std::move(plan));
 
-	auto insert = make_unique<SQLiteInsert>(op, op.schema, std::move(op.info));
+	auto insert = make_uniq<SQLiteInsert>(op, op.schema, std::move(op.info));
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

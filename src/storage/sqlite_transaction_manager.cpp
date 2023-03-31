@@ -8,7 +8,7 @@ SQLiteTransactionManager::SQLiteTransactionManager(AttachedDatabase &db_p, SQLit
 }
 
 Transaction *SQLiteTransactionManager::StartTransaction(ClientContext &context) {
-	auto transaction = make_unique<SQLiteTransaction>(sqlite_catalog, *this, context);
+	auto transaction = make_uniq<SQLiteTransaction>(sqlite_catalog, *this, context);
 	transaction->Start();
 	auto result = transaction.get();
 	lock_guard<mutex> l(transaction_lock);

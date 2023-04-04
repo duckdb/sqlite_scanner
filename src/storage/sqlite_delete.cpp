@@ -33,7 +33,7 @@ string GetDeleteSQL(const string &table_name) {
 }
 
 unique_ptr<GlobalSinkState> SQLiteDelete::GetGlobalSinkState(ClientContext &context) const {
-	auto &sqlite_table = (SQLiteTableEntry &)table;
+	auto &sqlite_table = table.Cast<SQLiteTableEntry>();
 
 	auto &transaction = SQLiteTransaction::Get(context, *sqlite_table.catalog);
 	auto result = make_uniq<SQLiteDeleteGlobalState>(sqlite_table);
@@ -46,7 +46,7 @@ unique_ptr<GlobalSinkState> SQLiteDelete::GetGlobalSinkState(ClientContext &cont
 //===--------------------------------------------------------------------===//
 SinkResultType SQLiteDelete::Sink(ExecutionContext &context, GlobalSinkState &state_p, LocalSinkState &lstate,
                                   DataChunk &input) const {
-	auto &gstate = (SQLiteDeleteGlobalState &)state_p;
+	auto &gstate = state_p.Cast<SQLiteDeleteGlobalState>();
 
 	input.Flatten();
 	auto &row_identifiers = input.data[0];
@@ -74,8 +74,8 @@ unique_ptr<GlobalSourceState> SQLiteDelete::GetGlobalSourceState(ClientContext &
 
 void SQLiteDelete::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
                            LocalSourceState &lstate) const {
-	auto &state = (SQLiteDeleteSourceState &)gstate;
-	auto &insert_gstate = (SQLiteDeleteGlobalState &)*sink_state;
+	auto &state = gstate.Cast<SQLiteDeleteSourceState>();
+	auto &insert_gstate = sink_state->Cast<SQLiteDeleteGlobalState>();
 	if (state.finished) {
 		return;
 	}

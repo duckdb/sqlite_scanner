@@ -97,7 +97,7 @@ unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &cont
 //===--------------------------------------------------------------------===//
 SinkResultType SQLiteInsert::Sink(ExecutionContext &context, GlobalSinkState &state, LocalSinkState &lstate,
                                   DataChunk &input) const {
-	auto &gstate = (SQLiteInsertGlobalState &)*sink_state;
+	auto &gstate = sink_state->Cast<SQLiteInsertGlobalState>();
 	input.Flatten();
 	auto &stmt = gstate.statement;
 	for (idx_t r = 0; r < input.size(); r++) {
@@ -127,8 +127,8 @@ unique_ptr<GlobalSourceState> SQLiteInsert::GetGlobalSourceState(ClientContext &
 
 void SQLiteInsert::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
                            LocalSourceState &lstate) const {
-	auto &state = (SQLiteInsertSourceState &)gstate;
-	auto &insert_gstate = (SQLiteInsertGlobalState &)*sink_state;
+	auto &state = gstate.Cast<SQLiteInsertSourceState>();
+	auto &insert_gstate = sink_state->Cast<SQLiteInsertGlobalState>();
 	if (state.finished) {
 		return;
 	}

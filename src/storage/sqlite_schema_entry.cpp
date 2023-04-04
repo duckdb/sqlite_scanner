@@ -70,7 +70,7 @@ CatalogEntry *SQLiteSchemaEntry::CreateFunction(CatalogTransaction transaction, 
 
 void UnqualifyColumnReferences(ParsedExpression &expr) {
 	if (expr.type == ExpressionType::COLUMN_REF) {
-		auto &colref = (ColumnRefExpression &)expr;
+		auto &colref = expr.Cast<ColumnRefExpression>();
 		auto name = std::move(colref.column_names.back());
 		colref.column_names = {std::move(name)};
 		return;

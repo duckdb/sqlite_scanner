@@ -8,11 +8,11 @@ SQLiteIndexEntry::SQLiteIndexEntry(Catalog *catalog, SchemaCatalogEntry *schema,
     : IndexCatalogEntry(catalog, schema, info), table_name(std::move(table_name_p)) {
 }
 
-string SQLiteIndexEntry::GetSchemaName() {
+string SQLiteIndexEntry::GetSchemaName() const {
 	return schema->name;
 }
 
-string SQLiteIndexEntry::GetTableName() {
+string SQLiteIndexEntry::GetTableName() const {
 	return table_name;
 }
 

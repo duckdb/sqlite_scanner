@@ -27,7 +27,7 @@ unique_ptr<GlobalSourceState> SQLiteCreateIndex::GetGlobalSourceState(ClientCont
 
 void SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
                                 LocalSourceState &lstate) const {
-	auto &state = (SQLiteIndexSourceState &)gstate;
+	auto &state = gstate.Cast<SQLiteIndexSourceState>();
 	if (state.finished) {
 		return;
 	}

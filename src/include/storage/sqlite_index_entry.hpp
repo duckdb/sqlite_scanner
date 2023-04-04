@@ -19,8 +19,8 @@ public:
 	string table_name;
 
 public:
-	string GetSchemaName() override;
-	string GetTableName() override;
+	string GetSchemaName() const override;
+	string GetTableName() const override;
 };
 
 } // namespace duckdb

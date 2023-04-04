@@ -42,7 +42,7 @@ string GetUpdateSQL(SQLiteTableEntry &table, const vector<PhysicalIndex> &index)
 }
 
 unique_ptr<GlobalSinkState> SQLiteUpdate::GetGlobalSinkState(ClientContext &context) const {
-	auto &sqlite_table = (SQLiteTableEntry &)table;
+	auto &sqlite_table = table.Cast<SQLiteTableEntry>();
 
 	auto &transaction = SQLiteTransaction::Get(context, *sqlite_table.catalog);
 	auto result = make_uniq<SQLiteUpdateGlobalState>(sqlite_table);
@@ -55,7 +55,7 @@ unique_ptr<GlobalSinkState> SQLiteUpdate::GetGlobalSinkState(ClientContext &cont
 //===--------------------------------------------------------------------===//
 SinkResultType SQLiteUpdate::Sink(ExecutionContext &context, GlobalSinkState &state_p, LocalSinkState &lstate,
                                   DataChunk &input) const {
-	auto &gstate = (SQLiteUpdateGlobalState &)state_p;
+	auto &gstate = state_p.Cast<SQLiteUpdateGlobalState>();
 
 	input.Flatten();
 	auto &row_identifiers = input.data[input.ColumnCount() - 1];
@@ -91,8 +91,8 @@ unique_ptr<GlobalSourceState> SQLiteUpdate::GetGlobalSourceState(ClientContext &
 
 void SQLiteUpdate::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
                            LocalSourceState &lstate) const {
-	auto &state = (SQLiteUpdateSourceState &)gstate;
-	auto &insert_gstate = (SQLiteUpdateGlobalState &)*sink_state;
+	auto &state = gstate.Cast<SQLiteUpdateSourceState>();
+	auto &insert_gstate = sink_state->Cast<SQLiteUpdateGlobalState>();
 	if (state.finished) {
 		return;
 	}

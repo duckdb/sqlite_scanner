@@ -81,28 +81,27 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 	return std::move(result);
 }
 
-static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bind_data, SqliteLocalState &local_state,
+static void SqliteInitInternal(ClientContext &context, const SqliteBindData &bind_data, SqliteLocalState &local_state,
                                idx_t rowid_min, idx_t rowid_max) {
-	D_ASSERT(bind_data);
 	D_ASSERT(rowid_min <= rowid_max);
 
 	local_state.done = false;
 	// we may have leftover statements or connections from a previous call to this function
 	local_state.stmt.Close();
 	if (!local_state.db) {
-		local_state.owned_db = SQLiteDB::Open(bind_data->file_name.c_str());
+		local_state.owned_db = SQLiteDB::Open(bind_data.file_name.c_str());
 		local_state.db = &local_state.owned_db;
 	}
 
 	auto col_names = StringUtil::Join(
 	    local_state.column_ids.data(), local_state.column_ids.size(), ", ", [&](const idx_t column_id) {
 		    return column_id == (column_t)-1 ? "ROWID"
-		                                     : '"' + SQLiteUtils::SanitizeIdentifier(bind_data->names[column_id]) + '"';
+		                                     : '"' + SQLiteUtils::SanitizeIdentifier(bind_data.names[column_id]) + '"';
 	    });
 
 	auto sql =
-	    StringUtil::Format("SELECT %s FROM \"%s\"", col_names, SQLiteUtils::SanitizeIdentifier(bind_data->table_name));
-	if (bind_data->rows_per_group != idx_t(-1)) {
+	    StringUtil::Format("SELECT %s FROM \"%s\"", col_names, SQLiteUtils::SanitizeIdentifier(bind_data.table_name));
+	if (bind_data.rows_per_group != idx_t(-1)) {
 		// we are scanning a subset of the rows - generate a WHERE clause based on the rowid
 		auto where_clause = StringUtil::Format(" WHERE ROWID BETWEEN %d AND %d", rowid_min, rowid_max);
 		sql += where_clause;
@@ -115,28 +114,25 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData *bin
 
 static unique_ptr<NodeStatistics> SqliteCardinality(ClientContext &context, const FunctionData *bind_data_p) {
 	D_ASSERT(bind_data_p);
-
-	auto bind_data = (const SqliteBindData *)bind_data_p;
-	return make_uniq<NodeStatistics>(bind_data->max_rowid);
+	auto &bind_data = bind_data_p->Cast<SqliteBindData>();
+	return make_uniq<NodeStatistics>(bind_data.max_rowid);
 }
 
 static idx_t SqliteMaxThreads(ClientContext &context, const FunctionData *bind_data_p) {
 	D_ASSERT(bind_data_p);
-	auto bind_data = (const SqliteBindData *)bind_data_p;
-	if (bind_data->global_db) {
+	auto &bind_data = bind_data_p->Cast<SqliteBindData>();
+	if (bind_data.global_db) {
 		return 1;
 	}
-	return bind_data->max_rowid / bind_data->rows_per_group;
+	return bind_data.max_rowid / bind_data.rows_per_group;
 }
 
-static bool SqliteParallelStateNext(ClientContext &context, const FunctionData *bind_data_p, SqliteLocalState &lstate,
+static bool SqliteParallelStateNext(ClientContext &context, const SqliteBindData &bind_data, SqliteLocalState &lstate,
                                     SqliteGlobalState &gstate) {
-	D_ASSERT(bind_data_p);
-	auto bind_data = (const SqliteBindData *)bind_data_p;
 	lock_guard<mutex> parallel_lock(gstate.lock);
-	if (gstate.position < bind_data->max_rowid) {
+	if (gstate.position < bind_data.max_rowid) {
 		auto start = gstate.position;
-		auto end = start + bind_data->rows_per_group - 1;
+		auto end = start + bind_data.rows_per_group - 1;
 		SqliteInitInternal(context, bind_data, lstate, start, end);
 		gstate.position = end + 1;
 		return true;
@@ -146,12 +142,12 @@ static bool SqliteParallelStateNext(ClientContext &context, const FunctionData *
 
 static unique_ptr<LocalTableFunctionState>
 SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, GlobalTableFunctionState *global_state) {
-	auto bind_data = (const SqliteBindData *)input.bind_data;
-	auto &gstate = (SqliteGlobalState &)*global_state;
+	auto &bind_data = input.bind_data->Cast<SqliteBindData>();
+	auto &gstate = global_state->Cast<SqliteGlobalState>();
 	auto result = make_uniq<SqliteLocalState>();
 	result->column_ids = input.column_ids;
-	result->db = bind_data->global_db;
-	if (!SqliteParallelStateNext(context.client, input.bind_data, *result, gstate)) {
+	result->db = bind_data.global_db;
+	if (!SqliteParallelStateNext(context.client, bind_data, *result, gstate)) {
 		result->done = true;
 	}
 	return std::move(result);
@@ -165,13 +161,13 @@ static unique_ptr<GlobalTableFunctionState> SqliteInitGlobalState(ClientContext 
 }
 
 static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChunk &output) {
-	auto &state = (SqliteLocalState &)*data.local_state;
-	auto &gstate = (SqliteGlobalState &)*data.global_state;
-	auto bind_data = (const SqliteBindData *)data.bind_data;
+	auto &state = data.local_state->Cast<SqliteLocalState>();
+	auto &gstate = data.global_state->Cast<SqliteGlobalState>();
+	auto &bind_data = data.bind_data->Cast<SqliteBindData>();
 
 	while (output.size() == 0) {
 		if (state.done) {
-			if (!SqliteParallelStateNext(context, data.bind_data, state, gstate)) {
+			if (!SqliteParallelStateNext(context, bind_data, state, gstate)) {
 				return;
 			}
 		}
@@ -209,7 +205,7 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 					FlatVector::GetData<double>(out_vec)[out_idx] = sqlite3_value_double(val);
 					break;
 				case LogicalTypeId::VARCHAR:
-					if (!bind_data->all_varchar) {
+					if (!bind_data.all_varchar) {
 						stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_TEXT, col_idx);
 					}
 					FlatVector::GetData<string_t>(out_vec)[out_idx] = StringVector::AddString(
@@ -240,8 +236,8 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 
 static string SqliteToString(const FunctionData *bind_data_p) {
 	D_ASSERT(bind_data_p);
-	auto bind_data = (const SqliteBindData *)bind_data_p;
-	return StringUtil::Format("%s:%s", bind_data->file_name, bind_data->table_name);
+	auto &bind_data = bind_data_p->Cast<SqliteBindData>();
+	return StringUtil::Format("%s:%s", bind_data.file_name, bind_data.table_name);
 }
 
 /*
@@ -291,7 +287,7 @@ static unique_ptr<FunctionData> AttachBind(ClientContext &context, TableFunction
 }
 
 static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
-	auto &data = (AttachFunctionData &)*data_p.bind_data;
+	auto &data = data_p.bind_data->CastNoConst<AttachFunctionData>();
 	if (data.finished) {
 		return;
 	}

@@ -13,14 +13,14 @@
 
 namespace duckdb {
 
-SQLiteInsert::SQLiteInsert(LogicalOperator &op, TableCatalogEntry *table,
+SQLiteInsert::SQLiteInsert(LogicalOperator &op, TableCatalogEntry &table,
                            physical_index_vector_t<idx_t> column_index_map_p)
-    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), schema(nullptr),
+    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(&table), schema(nullptr),
       column_index_map(std::move(column_index_map_p)) {
 }
 
-SQLiteInsert::SQLiteInsert(LogicalOperator &op, SchemaCatalogEntry *schema, unique_ptr<BoundCreateTableInfo> info)
-    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(nullptr), schema(schema),
+SQLiteInsert::SQLiteInsert(LogicalOperator &op, SchemaCatalogEntry &schema, unique_ptr<BoundCreateTableInfo> info)
+    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(nullptr), schema(&schema),
       info(std::move(info)) {
 }
 
@@ -82,9 +82,11 @@ string GetInsertSQL(const SQLiteInsert &insert, SQLiteTableEntry *entry) {
 unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &context) const {
 	SQLiteTableEntry *insert_table;
 	if (!table) {
-		insert_table = (SQLiteTableEntry *)schema->CreateTable(schema->GetCatalogTransaction(context), info.get());
+		auto &schema_ref = *schema.get_mutable();
+		insert_table =
+		    (SQLiteTableEntry *)schema_ref.CreateTable(schema_ref.GetCatalogTransaction(context), info.get());
 	} else {
-		insert_table = (SQLiteTableEntry *)table;
+		insert_table = (SQLiteTableEntry *)table.get();
 	}
 	auto &transaction = SQLiteTransaction::Get(context, *insert_table->catalog);
 	auto result = make_uniq<SQLiteInsertGlobalState>(context, insert_table);

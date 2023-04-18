@@ -16,14 +16,14 @@ namespace duckdb {
 class SQLiteInsert : public PhysicalOperator {
 public:
 	//! INSERT INTO
-	SQLiteInsert(LogicalOperator &op, TableCatalogEntry *table, physical_index_vector_t<idx_t> column_index_map);
+	SQLiteInsert(LogicalOperator &op, TableCatalogEntry &table, physical_index_vector_t<idx_t> column_index_map);
 	//! CREATE TABLE AS
-	SQLiteInsert(LogicalOperator &op, SchemaCatalogEntry *schema, unique_ptr<BoundCreateTableInfo> info);
+	SQLiteInsert(LogicalOperator &op, SchemaCatalogEntry &schema, unique_ptr<BoundCreateTableInfo> info);
 
 	//! The table to insert into
-	TableCatalogEntry *table;
+	optional_ptr<TableCatalogEntry> table;
 	//! Table schema, in case of CREATE TABLE AS
-	SchemaCatalogEntry *schema;
+	optional_ptr<SchemaCatalogEntry> schema;
 	//! Create table info, in case of CREATE TABLE AS
 	unique_ptr<BoundCreateTableInfo> info;
 	//! column_index_map

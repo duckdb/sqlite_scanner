@@ -103,7 +103,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanDelete(ClientContext &context, L
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for deletion of a SQLite table");
 	}
-	auto insert = make_uniq<SQLiteDelete>(op, *op.table);
+	auto insert = make_uniq<SQLiteDelete>(op, op.table);
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

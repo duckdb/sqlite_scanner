@@ -125,7 +125,7 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanUpdate(ClientContext &context, L
 			throw BinderException("SET DEFAULT is not yet supported for updates of a SQLite table");
 		}
 	}
-	auto insert = make_uniq<SQLiteUpdate>(op, *op.table, std::move(op.columns));
+	auto insert = make_uniq<SQLiteUpdate>(op, op.table, std::move(op.columns));
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

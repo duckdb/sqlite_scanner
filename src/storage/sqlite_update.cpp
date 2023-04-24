@@ -44,7 +44,7 @@ string GetUpdateSQL(SQLiteTableEntry &table, const vector<PhysicalIndex> &index)
 unique_ptr<GlobalSinkState> SQLiteUpdate::GetGlobalSinkState(ClientContext &context) const {
 	auto &sqlite_table = table.Cast<SQLiteTableEntry>();
 
-	auto &transaction = SQLiteTransaction::Get(context, *sqlite_table.catalog);
+	auto &transaction = SQLiteTransaction::Get(context, sqlite_table.catalog);
 	auto result = make_uniq<SQLiteUpdateGlobalState>(sqlite_table);
 	result->statement = transaction.GetDB().Prepare(GetUpdateSQL(sqlite_table, columns));
 	return std::move(result);

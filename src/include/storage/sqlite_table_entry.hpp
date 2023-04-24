@@ -14,7 +14,7 @@ namespace duckdb {
 
 class SQLiteTableEntry : public TableCatalogEntry {
 public:
-	SQLiteTableEntry(Catalog *catalog, SchemaCatalogEntry *schema, CreateTableInfo &info);
+	SQLiteTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info);
 
 public:
 	unique_ptr<BaseStatistics> GetStatistics(ClientContext &context, column_t column_id) override;

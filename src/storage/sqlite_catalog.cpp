@@ -17,23 +17,23 @@ SQLiteCatalog::~SQLiteCatalog() {
 }
 
 void SQLiteCatalog::Initialize(bool load_builtin) {
-	main_schema = make_uniq<SQLiteSchemaEntry>(this);
+	main_schema = make_uniq<SQLiteSchemaEntry>(*this);
 }
 
-CatalogEntry *SQLiteCatalog::CreateSchema(CatalogTransaction transaction, CreateSchemaInfo *info) {
+optional_ptr<CatalogEntry> SQLiteCatalog::CreateSchema(CatalogTransaction transaction, CreateSchemaInfo &info) {
 	throw BinderException("SQLite databases do not support creating new schemas");
 }
 
-void SQLiteCatalog::ScanSchemas(ClientContext &context, std::function<void(CatalogEntry *)> callback) {
-	callback(main_schema.get());
+void SQLiteCatalog::ScanSchemas(ClientContext &context, std::function<void(SchemaCatalogEntry &)> callback) {
+	callback(*main_schema);
 }
 
-SchemaCatalogEntry *SQLiteCatalog::GetSchema(CatalogTransaction transaction, const string &schema_name, bool if_exists,
+optional_ptr<SchemaCatalogEntry> SQLiteCatalog::GetSchema(CatalogTransaction transaction, const string &schema_name, OnEntryNotFound if_not_found,
                                              QueryErrorContext error_context) {
 	if (schema_name == DEFAULT_SCHEMA || schema_name == INVALID_SCHEMA) {
 		return main_schema.get();
 	}
-	if (if_exists) {
+	if (if_not_found == OnEntryNotFound::RETURN_NULL) {
 		return nullptr;
 	}
 	throw BinderException("SQLite databases only have a single schema - \"%s\"", DEFAULT_SCHEMA);
@@ -71,7 +71,7 @@ void SQLiteCatalog::ReleaseInMemoryDatabase() {
 	active_in_memory = false;
 }
 
-void SQLiteCatalog::DropSchema(ClientContext &context, DropInfo *info) {
+void SQLiteCatalog::DropSchema(ClientContext &context, DropInfo &info) {
 	throw BinderException("SQLite databases do not support dropping schemas");
 }
 

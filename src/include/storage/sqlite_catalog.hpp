@@ -29,15 +29,15 @@ public:
 		return "sqlite";
 	}
 
-	CatalogEntry *CreateSchema(CatalogTransaction transaction, CreateSchemaInfo *info) override;
+	optional_ptr<CatalogEntry> CreateSchema(CatalogTransaction transaction, CreateSchemaInfo &info) override;
 
-	void ScanSchemas(ClientContext &context, std::function<void(CatalogEntry *)> callback) override;
+	void ScanSchemas(ClientContext &context, std::function<void(SchemaCatalogEntry &)> callback) override;
 
-	SchemaCatalogEntry *GetSchema(CatalogTransaction transaction, const string &schema_name, bool if_exists = false,
+	optional_ptr<SchemaCatalogEntry> GetSchema(CatalogTransaction transaction, const string &schema_name, OnEntryNotFound if_not_found,
 	                              QueryErrorContext error_context = QueryErrorContext()) override;
 
-	SQLiteSchemaEntry *GetMainSchema() {
-		return main_schema.get();
+	SQLiteSchemaEntry &GetMainSchema() {
+		return *main_schema;
 	}
 
 	unique_ptr<PhysicalOperator> PlanInsert(ClientContext &context, LogicalInsert &op,
@@ -63,7 +63,7 @@ public:
 	void ReleaseInMemoryDatabase();
 
 private:
-	void DropSchema(ClientContext &context, DropInfo *info) override;
+	void DropSchema(ClientContext &context, DropInfo &info) override;
 
 private:
 	unique_ptr<SQLiteSchemaEntry> main_schema;

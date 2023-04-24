@@ -83,12 +83,11 @@ unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &cont
 	SQLiteTableEntry *insert_table;
 	if (!table) {
 		auto &schema_ref = *schema.get_mutable();
-		insert_table =
-		    (SQLiteTableEntry *)schema_ref.CreateTable(schema_ref.GetCatalogTransaction(context), info.get());
+		insert_table = &schema_ref.CreateTable(schema_ref.GetCatalogTransaction(context), *info)->Cast<SQLiteTableEntry>();
 	} else {
-		insert_table = (SQLiteTableEntry *)table.get();
+		insert_table = &table.get_mutable()->Cast<SQLiteTableEntry>();
 	}
-	auto &transaction = SQLiteTransaction::Get(context, *insert_table->catalog);
+	auto &transaction = SQLiteTransaction::Get(context, insert_table->catalog);
 	auto result = make_uniq<SQLiteInsertGlobalState>(context, insert_table);
 	result->statement = transaction.GetDB().Prepare(GetInsertSQL(*this, insert_table));
 	return std::move(result);

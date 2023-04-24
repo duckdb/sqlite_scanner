@@ -14,7 +14,7 @@ namespace duckdb {
 
 class SQLiteIndexEntry : public IndexCatalogEntry {
 public:
-	SQLiteIndexEntry(Catalog *catalog, SchemaCatalogEntry *schema, CreateIndexInfo *info, string table_name);
+	SQLiteIndexEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateIndexInfo &info, string table_name);
 
 	string table_name;
 

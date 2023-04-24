@@ -83,7 +83,8 @@ unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &cont
 	SQLiteTableEntry *insert_table;
 	if (!table) {
 		auto &schema_ref = *schema.get_mutable();
-		insert_table = &schema_ref.CreateTable(schema_ref.GetCatalogTransaction(context), *info)->Cast<SQLiteTableEntry>();
+		insert_table =
+		    &schema_ref.CreateTable(schema_ref.GetCatalogTransaction(context), *info)->Cast<SQLiteTableEntry>();
 	} else {
 		insert_table = &table.get_mutable()->Cast<SQLiteTableEntry>();
 	}

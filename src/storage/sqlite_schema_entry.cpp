@@ -100,7 +100,8 @@ string GetCreateIndexSQL(CreateIndexInfo &info, TableCatalogEntry &tbl) {
 	return sql;
 }
 
-optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateIndex(ClientContext &context, CreateIndexInfo &info, TableCatalogEntry &table) {
+optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateIndex(ClientContext &context, CreateIndexInfo &info,
+                                                          TableCatalogEntry &table) {
 	auto &sqlite_transaction = SQLiteTransaction::Get(context, table.catalog);
 	sqlite_transaction.GetDB().Execute(GetCreateIndexSQL(info, table));
 	return nullptr;
@@ -147,19 +148,23 @@ optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateSequence(CatalogTransaction 
 	throw BinderException("SQLite databases do not support creating sequences");
 }
 
-optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateTableFunction(CatalogTransaction transaction, CreateTableFunctionInfo &info) {
+optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateTableFunction(CatalogTransaction transaction,
+                                                                  CreateTableFunctionInfo &info) {
 	throw BinderException("SQLite databases do not support creating table functions");
 }
 
-optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateCopyFunction(CatalogTransaction transaction, CreateCopyFunctionInfo &info) {
+optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateCopyFunction(CatalogTransaction transaction,
+                                                                 CreateCopyFunctionInfo &info) {
 	throw BinderException("SQLite databases do not support creating copy functions");
 }
 
-optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreatePragmaFunction(CatalogTransaction transaction, CreatePragmaFunctionInfo &info) {
+optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreatePragmaFunction(CatalogTransaction transaction,
+                                                                   CreatePragmaFunctionInfo &info) {
 	throw BinderException("SQLite databases do not support creating pragma functions");
 }
 
-optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateCollation(CatalogTransaction transaction, CreateCollationInfo &info) {
+optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateCollation(CatalogTransaction transaction,
+                                                              CreateCollationInfo &info) {
 	throw BinderException("SQLite databases do not support creating collations");
 }
 
@@ -283,7 +288,8 @@ void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo &info) {
 	transaction.DropEntry(info.type, info.name, info.cascade);
 }
 
-optional_ptr<CatalogEntry> SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type, const string &name) {
+optional_ptr<CatalogEntry> SQLiteSchemaEntry::GetEntry(CatalogTransaction transaction, CatalogType type,
+                                                       const string &name) {
 	auto &sqlite_transaction = GetSQLiteTransaction(transaction);
 	switch (type) {
 	case CatalogType::INDEX_ENTRY:

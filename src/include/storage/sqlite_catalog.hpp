@@ -33,8 +33,9 @@ public:
 
 	void ScanSchemas(ClientContext &context, std::function<void(SchemaCatalogEntry &)> callback) override;
 
-	optional_ptr<SchemaCatalogEntry> GetSchema(CatalogTransaction transaction, const string &schema_name, OnEntryNotFound if_not_found,
-	                              QueryErrorContext error_context = QueryErrorContext()) override;
+	optional_ptr<SchemaCatalogEntry> GetSchema(CatalogTransaction transaction, const string &schema_name,
+	                                           OnEntryNotFound if_not_found,
+	                                           QueryErrorContext error_context = QueryErrorContext()) override;
 
 	SQLiteSchemaEntry &GetMainSchema() {
 		return *main_schema;

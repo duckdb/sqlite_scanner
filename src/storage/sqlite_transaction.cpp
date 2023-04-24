@@ -42,7 +42,7 @@ SQLiteDB &SQLiteTransaction::GetDB() {
 }
 
 SQLiteTransaction &SQLiteTransaction::Get(ClientContext &context, Catalog &catalog) {
-	return (SQLiteTransaction &)Transaction::Get(context, catalog);
+	return Transaction::Get(context, catalog).Cast<SQLiteTransaction>();
 }
 
 optional_ptr<CatalogEntry> SQLiteTransaction::GetCatalogEntry(const string &entry_name) {

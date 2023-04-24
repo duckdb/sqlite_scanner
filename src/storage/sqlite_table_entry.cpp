@@ -25,7 +25,7 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 	result->file_name = sqlite_catalog.path;
 	result->table_name = name;
 
-	auto &transaction = (SQLiteTransaction &)Transaction::Get(context, catalog);
+	auto &transaction = Transaction::Get(context, catalog).Cast<SQLiteTransaction>();
 	auto &db = transaction.GetDB();
 
 	if (!db.GetMaxRowId(name, result->max_rowid)) {
@@ -44,7 +44,7 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 }
 
 TableStorageInfo SQLiteTableEntry::GetStorageInfo(ClientContext &context) {
-	auto &transaction = (SQLiteTransaction &)Transaction::Get(context, catalog);
+	auto &transaction = Transaction::Get(context, catalog).Cast<SQLiteTransaction>();
 	auto &db = transaction.GetDB();
 	TableStorageInfo result;
 	if (!db.GetMaxRowId(name, result.cardinality)) {

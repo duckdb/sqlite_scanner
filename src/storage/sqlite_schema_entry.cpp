@@ -22,7 +22,7 @@ SQLiteTransaction &GetSQLiteTransaction(CatalogTransaction transaction) {
 	if (!transaction.transaction) {
 		throw InternalException("No transaction!?");
 	}
-	return (SQLiteTransaction &)*transaction.transaction;
+	return transaction.transaction->Cast<SQLiteTransaction>();
 }
 
 string GetCreateTableSQL(CreateTableInfo &info) {

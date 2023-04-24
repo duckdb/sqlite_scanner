@@ -155,7 +155,7 @@ SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, G
 
 static unique_ptr<GlobalTableFunctionState> SqliteInitGlobalState(ClientContext &context,
                                                                   TableFunctionInitInput &input) {
-	auto result = make_uniq<SqliteGlobalState>(SqliteMaxThreads(context, input.bind_data));
+	auto result = make_uniq<SqliteGlobalState>(SqliteMaxThreads(context, input.bind_data.get()));
 	result->position = 0;
 	return std::move(result);
 }

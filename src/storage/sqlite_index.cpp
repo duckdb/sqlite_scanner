@@ -31,9 +31,9 @@ void SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk &chunk, Glo
 	if (state.finished) {
 		return;
 	}
-	auto &catalog = *table.catalog;
-	auto schema = catalog.GetSchema(context.client, info->schema);
-	schema->CreateIndex(context.client, info.get(), &table);
+	auto &catalog = table.catalog;
+	auto &schema = catalog.GetSchema(context.client, info->schema);
+	schema.CreateIndex(context.client, *info, table);
 	state.finished = true;
 }
 

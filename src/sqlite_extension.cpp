@@ -21,12 +21,12 @@ DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
 
 	SqliteScanFunction sqlite_fun;
 	CreateTableFunctionInfo sqlite_info(sqlite_fun);
-	catalog.CreateTableFunction(context, &sqlite_info);
+	catalog.CreateTableFunction(context, sqlite_info);
 
 	SqliteAttachFunction attach_func;
 
 	CreateTableFunctionInfo attach_info(attach_func);
-	catalog.CreateTableFunction(context, &attach_info);
+	catalog.CreateTableFunction(context, attach_info);
 
 	auto &config = DBConfig::GetConfig(db);
 	config.AddExtensionOption("sqlite_all_varchar", "Load all SQLite columns as VARCHAR columns", LogicalType::BOOLEAN);

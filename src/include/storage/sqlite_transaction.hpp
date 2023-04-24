@@ -19,14 +19,14 @@ class SQLiteTableEntry;
 class SQLiteTransaction : public Transaction {
 public:
 	SQLiteTransaction(SQLiteCatalog &sqlite_catalog, TransactionManager &manager, ClientContext &context);
-	~SQLiteTransaction();
+	~SQLiteTransaction() override;
 
 	void Start();
 	void Commit();
 	void Rollback();
 
 	SQLiteDB &GetDB();
-	CatalogEntry *GetCatalogEntry(const string &table_name);
+	optional_ptr<CatalogEntry> GetCatalogEntry(const string &table_name);
 	void DropEntry(CatalogType type, const string &table_name, bool cascade);
 	void ClearTableEntry(const string &table_name);
 

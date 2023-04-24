@@ -35,7 +35,7 @@ string GetDeleteSQL(const string &table_name) {
 unique_ptr<GlobalSinkState> SQLiteDelete::GetGlobalSinkState(ClientContext &context) const {
 	auto &sqlite_table = table.Cast<SQLiteTableEntry>();
 
-	auto &transaction = SQLiteTransaction::Get(context, *sqlite_table.catalog);
+	auto &transaction = SQLiteTransaction::Get(context, sqlite_table.catalog);
 	auto result = make_uniq<SQLiteDeleteGlobalState>(sqlite_table);
 	result->statement = transaction.GetDB().Prepare(GetDeleteSQL(sqlite_table.name));
 	return std::move(result);

@@ -42,10 +42,10 @@ SQLiteDB &SQLiteTransaction::GetDB() {
 }
 
 SQLiteTransaction &SQLiteTransaction::Get(ClientContext &context, Catalog &catalog) {
-	return (SQLiteTransaction &)Transaction::Get(context, catalog);
+	return Transaction::Get(context, catalog).Cast<SQLiteTransaction>();
 }
 
-CatalogEntry *SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
+optional_ptr<CatalogEntry> SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
 	auto entry = catalog_entries.find(entry_name);
 	if (entry != catalog_entries.end()) {
 		return entry->second.get();
@@ -64,7 +64,7 @@ CatalogEntry *SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
 		db->GetTableInfo(entry_name, info.columns, info.constraints, false);
 		D_ASSERT(!info.columns.empty());
 
-		result = make_uniq<SQLiteTableEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), info);
+		result = make_uniq<SQLiteTableEntry>(sqlite_catalog, sqlite_catalog.GetMainSchema(), info);
 		break;
 	}
 	case CatalogType::VIEW_ENTRY: {
@@ -73,7 +73,7 @@ CatalogEntry *SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
 
 		auto view_info = CreateViewInfo::FromCreateView(*context.lock(), sql);
 		view_info->internal = false;
-		result = make_uniq<ViewCatalogEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), view_info.get());
+		result = make_uniq<ViewCatalogEntry>(sqlite_catalog, sqlite_catalog.GetMainSchema(), *view_info);
 		break;
 	}
 	case CatalogType::INDEX_ENTRY: {
@@ -85,7 +85,7 @@ CatalogEntry *SQLiteTransaction::GetCatalogEntry(const string &entry_name) {
 		db->GetIndexInfo(entry_name, sql, table_name);
 
 		auto index_entry =
-		    make_uniq<SQLiteIndexEntry>(&sqlite_catalog, sqlite_catalog.GetMainSchema(), &info, std::move(table_name));
+		    make_uniq<SQLiteIndexEntry>(sqlite_catalog, sqlite_catalog.GetMainSchema(), info, std::move(table_name));
 		index_entry->sql = std::move(sql);
 		result = std::move(index_entry);
 		break;

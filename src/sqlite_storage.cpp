@@ -19,7 +19,7 @@ static unique_ptr<Catalog> SQLiteAttach(StorageExtensionInfo *storage_info, Atta
 
 static unique_ptr<TransactionManager> SQLiteCreateTransactionManager(StorageExtensionInfo *storage_info,
                                                                      AttachedDatabase &db, Catalog &catalog) {
-	auto &sqlite_catalog = (SQLiteCatalog &)catalog;
+	auto &sqlite_catalog = catalog.Cast<SQLiteCatalog>();
 	return make_uniq<SQLiteTransactionManager>(db, sqlite_catalog);
 }
 

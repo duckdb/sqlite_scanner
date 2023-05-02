@@ -53,19 +53,18 @@ unique_ptr<GlobalSinkState> SQLiteUpdate::GetGlobalSinkState(ClientContext &cont
 //===--------------------------------------------------------------------===//
 // Sink
 //===--------------------------------------------------------------------===//
-SinkResultType SQLiteUpdate::Sink(ExecutionContext &context, GlobalSinkState &state_p, LocalSinkState &lstate,
-                                  DataChunk &input) const {
-	auto &gstate = state_p.Cast<SQLiteUpdateGlobalState>();
+SinkResultType SQLiteUpdate::Sink(ExecutionContext &context, DataChunk &chunk, OperatorSinkInput &input) const {
+	auto &gstate = input.global_state.Cast<SQLiteUpdateGlobalState>();
 
-	input.Flatten();
-	auto &row_identifiers = input.data[input.ColumnCount() - 1];
+	chunk.Flatten();
+	auto &row_identifiers = chunk.data[chunk.ColumnCount() - 1];
 	auto row_data = FlatVector::GetData<row_t>(row_identifiers);
 	auto &stmt = gstate.statement;
-	auto update_columns = input.ColumnCount() - 1;
-	for (idx_t r = 0; r < input.size(); r++) {
+	auto update_columns = chunk.ColumnCount() - 1;
+	for (idx_t r = 0; r < chunk.size(); r++) {
 		// bind the SET values
 		for (idx_t c = 0; c < update_columns; c++) {
-			auto &col = input.data[c];
+			auto &col = chunk.data[c];
 			stmt.BindValue(col, c, r);
 		}
 		// bind the row identifier
@@ -73,32 +72,19 @@ SinkResultType SQLiteUpdate::Sink(ExecutionContext &context, GlobalSinkState &st
 		stmt.Step();
 		stmt.Reset();
 	}
-	gstate.update_count += input.size();
+	gstate.update_count += chunk.size();
 	return SinkResultType::NEED_MORE_INPUT;
 }
 
 //===--------------------------------------------------------------------===//
 // GetData
 //===--------------------------------------------------------------------===//
-class SQLiteUpdateSourceState : public GlobalSourceState {
-public:
-	bool finished = false;
-};
-
-unique_ptr<GlobalSourceState> SQLiteUpdate::GetGlobalSourceState(ClientContext &context) const {
-	return make_uniq<SQLiteUpdateSourceState>();
-}
-
-void SQLiteUpdate::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
-                           LocalSourceState &lstate) const {
-	auto &state = gstate.Cast<SQLiteUpdateSourceState>();
+SourceResultType SQLiteUpdate::GetData(ExecutionContext &context, DataChunk &chunk, OperatorSourceInput &input) const {
 	auto &insert_gstate = sink_state->Cast<SQLiteUpdateGlobalState>();
-	if (state.finished) {
-		return;
-	}
 	chunk.SetCardinality(1);
 	chunk.SetValue(0, 0, Value::BIGINT(insert_gstate.update_count));
-	state.finished = true;
+
+	return SourceResultType::FINISHED;
 }
 
 //===--------------------------------------------------------------------===//

@@ -97,46 +97,32 @@ unique_ptr<GlobalSinkState> SQLiteInsert::GetGlobalSinkState(ClientContext &cont
 //===--------------------------------------------------------------------===//
 // Sink
 //===--------------------------------------------------------------------===//
-SinkResultType SQLiteInsert::Sink(ExecutionContext &context, GlobalSinkState &state, LocalSinkState &lstate,
-                                  DataChunk &input) const {
+SinkResultType SQLiteInsert::Sink(ExecutionContext &context, DataChunk &chunk, OperatorSinkInput &input) const {
 	auto &gstate = sink_state->Cast<SQLiteInsertGlobalState>();
-	input.Flatten();
+	chunk.Flatten();
 	auto &stmt = gstate.statement;
-	for (idx_t r = 0; r < input.size(); r++) {
-		for (idx_t c = 0; c < input.ColumnCount(); c++) {
-			auto &col = input.data[c];
+	for (idx_t r = 0; r < chunk.size(); r++) {
+		for (idx_t c = 0; c < chunk.ColumnCount(); c++) {
+			auto &col = chunk.data[c];
 			stmt.BindValue(col, c, r);
 		}
 		// execute and clear bindings
 		stmt.Step();
 		stmt.Reset();
 	}
-	gstate.insert_count += input.size();
+	gstate.insert_count += chunk.size();
 	return SinkResultType::NEED_MORE_INPUT;
 }
 
 //===--------------------------------------------------------------------===//
 // GetData
 //===--------------------------------------------------------------------===//
-class SQLiteInsertSourceState : public GlobalSourceState {
-public:
-	bool finished = false;
-};
-
-unique_ptr<GlobalSourceState> SQLiteInsert::GetGlobalSourceState(ClientContext &context) const {
-	return make_uniq<SQLiteInsertSourceState>();
-}
-
-void SQLiteInsert::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
-                           LocalSourceState &lstate) const {
-	auto &state = gstate.Cast<SQLiteInsertSourceState>();
+SourceResultType SQLiteInsert::GetData(ExecutionContext &context, DataChunk &chunk, OperatorSourceInput &input) const {
 	auto &insert_gstate = sink_state->Cast<SQLiteInsertGlobalState>();
-	if (state.finished) {
-		return;
-	}
 	chunk.SetCardinality(1);
 	chunk.SetValue(0, 0, Value::BIGINT(insert_gstate.insert_count));
-	state.finished = true;
+
+	return SourceResultType::FINISHED;
 }
 
 //===--------------------------------------------------------------------===//

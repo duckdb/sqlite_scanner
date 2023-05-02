@@ -13,28 +13,12 @@ SQLiteCreateIndex::SQLiteCreateIndex(unique_ptr<CreateIndexInfo> info, TableCata
 //===--------------------------------------------------------------------===//
 // Source
 //===--------------------------------------------------------------------===//
-class SQLiteIndexSourceState : public GlobalSourceState {
-public:
-	SQLiteIndexSourceState() : finished(false) {
-	}
-
-	bool finished;
-};
-
-unique_ptr<GlobalSourceState> SQLiteCreateIndex::GetGlobalSourceState(ClientContext &context) const {
-	return make_uniq<SQLiteIndexSourceState>();
-}
-
-void SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
-                                LocalSourceState &lstate) const {
-	auto &state = gstate.Cast<SQLiteIndexSourceState>();
-	if (state.finished) {
-		return;
-	}
+SourceResultType SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk &chunk, OperatorSourceInput &input) const {
 	auto &catalog = table.catalog;
 	auto &schema = catalog.GetSchema(context.client, info->schema);
 	schema.CreateIndex(context.client, *info, table);
-	state.finished = true;
+
+	return SourceResultType::FINISHED;
 }
 
 //===--------------------------------------------------------------------===//

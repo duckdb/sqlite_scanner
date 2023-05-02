@@ -44,44 +44,30 @@ unique_ptr<GlobalSinkState> SQLiteDelete::GetGlobalSinkState(ClientContext &cont
 //===--------------------------------------------------------------------===//
 // Sink
 //===--------------------------------------------------------------------===//
-SinkResultType SQLiteDelete::Sink(ExecutionContext &context, GlobalSinkState &state_p, LocalSinkState &lstate,
-                                  DataChunk &input) const {
-	auto &gstate = state_p.Cast<SQLiteDeleteGlobalState>();
+SinkResultType SQLiteDelete::Sink(ExecutionContext &context, DataChunk &chunk, OperatorSinkInput &input) const {
+	auto &gstate = input.global_state.Cast<SQLiteDeleteGlobalState>();
 
-	input.Flatten();
-	auto &row_identifiers = input.data[0];
+	chunk.Flatten();
+	auto &row_identifiers = chunk.data[0];
 	auto row_data = FlatVector::GetData<row_t>(row_identifiers);
-	for (idx_t i = 0; i < input.size(); i++) {
+	for (idx_t i = 0; i < chunk.size(); i++) {
 		gstate.statement.Bind<int64_t>(0, row_data[i]);
 		gstate.statement.Step();
 		gstate.statement.Reset();
 	}
-	gstate.delete_count += input.size();
+	gstate.delete_count += chunk.size();
 	return SinkResultType::NEED_MORE_INPUT;
 }
 
 //===--------------------------------------------------------------------===//
 // GetData
 //===--------------------------------------------------------------------===//
-class SQLiteDeleteSourceState : public GlobalSourceState {
-public:
-	bool finished = false;
-};
-
-unique_ptr<GlobalSourceState> SQLiteDelete::GetGlobalSourceState(ClientContext &context) const {
-	return make_uniq<SQLiteDeleteSourceState>();
-}
-
-void SQLiteDelete::GetData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
-                           LocalSourceState &lstate) const {
-	auto &state = gstate.Cast<SQLiteDeleteSourceState>();
+SourceResultType SQLiteDelete::GetData(ExecutionContext &context, DataChunk &chunk, OperatorSourceInput &input) const {
 	auto &insert_gstate = sink_state->Cast<SQLiteDeleteGlobalState>();
-	if (state.finished) {
-		return;
-	}
 	chunk.SetCardinality(1);
 	chunk.SetValue(0, 0, Value::BIGINT(insert_gstate.delete_count));
-	state.finished = true;
+
+	return SourceResultType::FINISHED;
 }
 
 //===--------------------------------------------------------------------===//

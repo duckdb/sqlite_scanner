@@ -216,7 +216,11 @@ bool SQLiteDB::GetMaxRowId(const string &table_name, idx_t &max_row_id) {
 	if (!stmt.Step()) {
 		return false;
 	}
-	max_row_id = stmt.GetValue<int64_t>(0);
+	int64_t val = stmt.GetValue<int64_t>(0);;
+	if (val <= 0) {
+		return false;
+	}
+	max_row_id = idx_t(val);
 	return true;
 }
 

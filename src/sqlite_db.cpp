@@ -5,6 +5,7 @@
 #include "duckdb/parser/parser.hpp"
 #include "sqlite_db.hpp"
 #include "sqlite_stmt.hpp"
+#include "duckdb/common/types/uuid.hpp"
 
 namespace duckdb {
 
@@ -20,14 +21,16 @@ SQLiteDB::~SQLiteDB() {
 
 SQLiteDB::SQLiteDB(SQLiteDB &&other) noexcept {
 	std::swap(db, other.db);
+	std::swap(vfs, other.vfs);
 }
 
 SQLiteDB &SQLiteDB::operator=(SQLiteDB &&other) noexcept {
 	std::swap(db, other.db);
+	std::swap(vfs, other.vfs);
 	return *this;
 }
 
-SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
+SQLiteDB SQLiteDB::OpenInternal(const string &path, bool is_read_only, bool is_shared, optional_ptr<ClientContext> context) {
 	SQLiteDB result;
 	int flags = SQLITE_OPEN_PRIVATECACHE;
 	if (is_read_only) {
@@ -40,11 +43,36 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 		flags |= SQLITE_OPEN_NOMUTEX;
 	}
 	flags |= SQLITE_OPEN_EXRESCODE;
-	auto rc = sqlite3_open_v2(path.c_str(), &result.db, flags, nullptr);
+	string vfs_name;
+	if (context) {
+		// register a virtual file system
+		vfs_name = result.RegisterVFS(*context);
+	}
+	auto rc = sqlite3_open_v2(path.c_str(), &result.db, flags, vfs_name.empty() ? nullptr : vfs_name.c_str());
 	if (rc != SQLITE_OK) {
 		throw std::runtime_error("Unable to open database \"" + path + "\": " + string(sqlite3_errstr(rc)));
 	}
 	return result;
+}
+
+SQLiteDB SQLiteDB::Open(ClientContext &context, const string &path, bool is_read_only, bool is_shared) {
+	return SQLiteDB::OpenInternal(path, is_read_only, is_shared, &context);
+}
+
+SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
+	return SQLiteDB::OpenInternal(path, is_read_only, is_shared, nullptr);
+}
+
+
+string SQLiteDB::RegisterVFS(ClientContext &context) {
+	if (vfs) {
+		throw InternalException("RegisterVFS called on DB that already has a VFS");
+	}
+
+	auto vfs_name = "_duckdb_sqlite_vfs_" + UUID::ToString(UUID::GenerateRandomUUID());
+	vfs = make_uniq<SQLiteVirtualFileSystem>(vfs_name, context);
+	sqlite3_vfs_register(vfs->GetSQLiteVFS(), 0);
+	return vfs_name;
 }
 
 bool SQLiteDB::TryPrepare(const string &query, SQLiteStatement &stmt) {

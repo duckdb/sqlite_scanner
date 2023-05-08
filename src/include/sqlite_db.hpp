@@ -9,8 +9,10 @@
 #pragma once
 
 #include "sqlite_utils.hpp"
+#include "sqlite_vfs.hpp"
 
 namespace duckdb {
+class ClientContext;
 class SQLiteStatement;
 
 class SQLiteDB {
@@ -28,6 +30,7 @@ public:
 	sqlite3 *db;
 
 public:
+	static SQLiteDB Open(ClientContext &context, const string &path, bool is_read_only = true, bool is_shared = false);
 	static SQLiteDB Open(const string &path, bool is_read_only = true, bool is_shared = false);
 	bool TryPrepare(const string &query, SQLiteStatement &result);
 	SQLiteStatement Prepare(const string &query);
@@ -45,8 +48,16 @@ public:
 	bool GetMaxRowId(const string &table_name, idx_t &row_id);
 	bool ColumnExists(const string &table_name, const string &column_name);
 
+	string RegisterVFS(ClientContext &context);
+
 	bool IsOpen();
 	void Close();
+
+private:
+	static SQLiteDB OpenInternal(const string &path, bool is_read_only, bool is_shared, optional_ptr<ClientContext> context);
+
+private:
+	unique_ptr<SQLiteVirtualFileSystem> vfs;
 };
 
 } // namespace duckdb

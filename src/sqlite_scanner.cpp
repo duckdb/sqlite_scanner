@@ -50,7 +50,7 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 
 	SQLiteDB db;
 	SQLiteStatement stmt;
-	db = SQLiteDB::Open(result->file_name);
+	db = SQLiteDB::Open(context, result->file_name);
 
 	ColumnList columns;
 	vector<unique_ptr<Constraint>> constraints;
@@ -89,7 +89,7 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData &bin
 	// we may have leftover statements or connections from a previous call to this function
 	local_state.stmt.Close();
 	if (!local_state.db) {
-		local_state.owned_db = SQLiteDB::Open(bind_data.file_name.c_str());
+		local_state.owned_db = SQLiteDB::Open(context, bind_data.file_name.c_str());
 		local_state.db = &local_state.owned_db;
 	}
 
@@ -292,7 +292,7 @@ static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, D
 		return;
 	}
 
-	SQLiteDB db = SQLiteDB::Open(data.file_name);
+	SQLiteDB db = SQLiteDB::Open(context, data.file_name);
 	auto dconn = Connection(context.db->GetDatabase(context));
 	{
 		auto tables = db.GetTables();

@@ -1,0 +1,12 @@
+statement ok
+LOAD '../build/debug/extension/sqlite_scanner/sqlite_scanner.duckdb_extension';
+
+require httpfs
+
+query I
+select * from sqlite_scan('https://github.com/duckdblabs/sqlite_scanner/raw/main/data/float.db', 'my');
+----
+10.34
+0.042
+NULL
+42.0

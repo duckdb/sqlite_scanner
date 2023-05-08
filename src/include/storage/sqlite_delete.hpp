@@ -23,6 +23,10 @@ public:
 	// Source interface
 	SourceResultType GetData(ExecutionContext &context, DataChunk &chunk, OperatorSourceInput &input) const override;
 
+	bool IsSource() const override {
+		return true;
+	}
+
 public:
 	// Sink interface
 	unique_ptr<GlobalSinkState> GetGlobalSinkState(ClientContext &context) const override;

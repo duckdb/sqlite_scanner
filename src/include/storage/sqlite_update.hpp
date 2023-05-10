@@ -24,7 +24,7 @@ public:
 
 public:
 	// Source interface
-	SourceResultType GetData(ExecutionContext &context, DataChunk& chunk, OperatorSourceInput &input) const override;
+	SourceResultType GetData(ExecutionContext &context, DataChunk &chunk, OperatorSourceInput &input) const override;
 
 	bool IsSource() const override {
 		return true;
@@ -33,7 +33,7 @@ public:
 public:
 	// Sink interface
 	unique_ptr<GlobalSinkState> GetGlobalSinkState(ClientContext &context) const override;
-	SinkResultType Sink(ExecutionContext &context, DataChunk& chunk, OperatorSinkInput &input) const override;
+	SinkResultType Sink(ExecutionContext &context, DataChunk &chunk, OperatorSinkInput &input) const override;
 
 	bool IsSink() const override {
 		return true;

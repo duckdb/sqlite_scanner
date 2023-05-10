@@ -217,7 +217,8 @@ bool SQLiteDB::GetMaxRowId(const string &table_name, idx_t &max_row_id) {
 	if (!stmt.Step()) {
 		return false;
 	}
-	int64_t val = stmt.GetValue<int64_t>(0);;
+	int64_t val = stmt.GetValue<int64_t>(0);
+	;
 	if (val <= 0) {
 		return false;
 	}
@@ -225,14 +226,14 @@ bool SQLiteDB::GetMaxRowId(const string &table_name, idx_t &max_row_id) {
 	return true;
 }
 
-
 vector<IndexInfo> SQLiteDB::GetIndexInfo(const string &table_name) {
 	vector<IndexInfo> info;
 	// fetch the primary key
 	SQLiteStatement stmt;
-	stmt = Prepare(StringUtil::Format("SELECT cid FROM pragma_table_info('%s') WHERE pk", SQLiteUtils::SanitizeString(table_name)));
+	stmt = Prepare(StringUtil::Format("SELECT cid FROM pragma_table_info('%s') WHERE pk",
+	                                  SQLiteUtils::SanitizeString(table_name)));
 	IndexInfo pk_index;
-	while(stmt.Step()) {
+	while (stmt.Step()) {
 		auto cid = stmt.GetValue<int64_t>(0);
 		pk_index.column_set.insert(cid);
 	}
@@ -245,16 +246,18 @@ vector<IndexInfo> SQLiteDB::GetIndexInfo(const string &table_name) {
 	}
 
 	// now query the set of unique constraints for the table
-	stmt = Prepare(StringUtil::Format("SELECT name FROM pragma_index_list('%s') WHERE \"unique\" AND origin='u'", SQLiteUtils::SanitizeString(table_name)));
+	stmt = Prepare(StringUtil::Format("SELECT name FROM pragma_index_list('%s') WHERE \"unique\" AND origin='u'",
+	                                  SQLiteUtils::SanitizeString(table_name)));
 	vector<string> unique_indexes;
-	while(stmt.Step()) {
+	while (stmt.Step()) {
 		auto index_name = stmt.GetValue<string>(0);
 		unique_indexes.push_back(index_name);
 	}
-	for(auto &index_name : unique_indexes) {
-		stmt = Prepare(StringUtil::Format("SELECT cid FROM pragma_index_info('%s')", SQLiteUtils::SanitizeString(index_name)));
+	for (auto &index_name : unique_indexes) {
+		stmt = Prepare(
+		    StringUtil::Format("SELECT cid FROM pragma_index_info('%s')", SQLiteUtils::SanitizeString(index_name)));
 		IndexInfo unique_index;
-		while(stmt.Step()) {
+		while (stmt.Step()) {
 			auto cid = stmt.GetValue<int64_t>(0);
 			unique_index.column_set.insert(cid);
 		}

@@ -12,6 +12,7 @@
 
 namespace duckdb {
 class SQLiteStatement;
+struct IndexInfo;
 
 class SQLiteDB {
 public:
@@ -44,6 +45,7 @@ public:
 	//! Gets the max row id of a table, returns false if the table does not have a rowid column
 	bool GetMaxRowId(const string &table_name, idx_t &row_id);
 	bool ColumnExists(const string &table_name, const string &column_name);
+	vector<IndexInfo> GetIndexInfo(const string &table_name);
 
 	bool IsOpen();
 	void Close();

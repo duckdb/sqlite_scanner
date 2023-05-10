@@ -1,6 +1,7 @@
 #include "duckdb/parser/constraints/not_null_constraint.hpp"
 #include "duckdb/parser/constraints/unique_constraint.hpp"
 #include "duckdb/parser/expression/constant_expression.hpp"
+#include "duckdb/storage/table_storage_info.hpp"
 #include "duckdb/parser/column_list.hpp"
 #include "duckdb/parser/parser.hpp"
 #include "sqlite_db.hpp"
@@ -222,6 +223,50 @@ bool SQLiteDB::GetMaxRowId(const string &table_name, idx_t &max_row_id) {
 	}
 	max_row_id = idx_t(val);
 	return true;
+}
+
+
+vector<IndexInfo> SQLiteDB::GetIndexInfo(const string &table_name) {
+	vector<IndexInfo> info;
+	// fetch the primary key
+	SQLiteStatement stmt;
+	stmt = Prepare(StringUtil::Format("SELECT cid FROM pragma_table_info('%s') WHERE pk", SQLiteUtils::SanitizeString(table_name)));
+	IndexInfo pk_index;
+	while(stmt.Step()) {
+		auto cid = stmt.GetValue<int64_t>(0);
+		pk_index.column_set.insert(cid);
+	}
+	if (!pk_index.column_set.empty()) {
+		// we have a pk - add it
+		pk_index.is_primary = true;
+		pk_index.is_unique = true;
+		pk_index.is_foreign = false;
+		info.push_back(std::move(pk_index));
+	}
+
+	// now query the set of unique constraints for the table
+	stmt = Prepare(StringUtil::Format("SELECT name FROM pragma_index_list('%s') WHERE \"unique\" AND origin='u'", SQLiteUtils::SanitizeString(table_name)));
+	vector<string> unique_indexes;
+	while(stmt.Step()) {
+		auto index_name = stmt.GetValue<string>(0);
+		unique_indexes.push_back(index_name);
+	}
+	for(auto &index_name : unique_indexes) {
+		stmt = Prepare(StringUtil::Format("SELECT cid FROM pragma_index_info('%s')", SQLiteUtils::SanitizeString(index_name)));
+		IndexInfo unique_index;
+		while(stmt.Step()) {
+			auto cid = stmt.GetValue<int64_t>(0);
+			unique_index.column_set.insert(cid);
+		}
+		if (!unique_index.column_set.empty()) {
+			// we have a pk - add it
+			unique_index.is_primary = false;
+			unique_index.is_unique = true;
+			unique_index.is_foreign = false;
+			info.push_back(std::move(unique_index));
+		}
+	}
+	return info;
 }
 
 idx_t SQLiteDB::RunPragma(string pragma_name) {

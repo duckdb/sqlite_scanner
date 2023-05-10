@@ -181,6 +181,9 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanInsert(ClientContext &context, L
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for insertion into SQLite table");
 	}
+	if (op.action_type != OnConflictAction::THROW) {
+		throw BinderException("ON CONFLICT clause not yet supported for insertion into SQLite table");
+	}
 
 	plan = AddCastToSQLiteTypes(context, std::move(plan));
 

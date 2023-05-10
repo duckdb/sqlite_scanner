@@ -51,6 +51,7 @@ TableStorageInfo SQLiteTableEntry::GetStorageInfo(ClientContext &context) {
 		// probably
 		result.cardinality = 10000;
 	}
+	result.index_info = db.GetIndexInfo(name);
 	return result;
 }
 

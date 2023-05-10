@@ -13,7 +13,8 @@ SQLiteCreateIndex::SQLiteCreateIndex(unique_ptr<CreateIndexInfo> info, TableCata
 //===--------------------------------------------------------------------===//
 // Source
 //===--------------------------------------------------------------------===//
-SourceResultType SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk &chunk, OperatorSourceInput &input) const {
+SourceResultType SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk &chunk,
+                                            OperatorSourceInput &input) const {
 	auto &catalog = table.catalog;
 	auto &schema = catalog.GetSchema(context.client, info->schema);
 	schema.CreateIndex(context.client, *info, table);

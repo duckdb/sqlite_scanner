@@ -85,7 +85,7 @@ jobs:
 
     - name: Build
       run: |
-        make
+        make pull release
 
     - name: Make tpch test database
       run: |

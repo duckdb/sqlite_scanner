@@ -56,12 +56,19 @@ optional_ptr<CatalogEntry> SQLiteTransaction::GetCatalogEntry(const string &entr
 		// no table or view found
 		return nullptr;
 	}
+
+	auto all_varchar = false;
+	Value sqlite_all_varchar;
+	if (context.lock()->TryGetCurrentSetting("sqlite_all_varchar",
+											sqlite_all_varchar)) {
+		all_varchar = BooleanValue::Get(sqlite_all_varchar);
+	}
+
 	unique_ptr<CatalogEntry> result;
 	switch (type) {
 	case CatalogType::TABLE_ENTRY: {
 		CreateTableInfo info(sqlite_catalog.GetMainSchema(), entry_name);
-		// FIXME: all_varchar from config
-		db->GetTableInfo(entry_name, info.columns, info.constraints, false);
+		db->GetTableInfo(entry_name, info.columns, info.constraints, all_varchar);
 		D_ASSERT(!info.columns.empty());
 
 		result = make_uniq<SQLiteTableEntry>(sqlite_catalog, sqlite_catalog.GetMainSchema(), info);

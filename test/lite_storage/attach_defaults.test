@@ -41,4 +41,4 @@ does not have a column with name "zzz"
 statement error
 INSERT INTO s1.test (j, j, j) VALUES (1, 2, 3)
 ----
-duplicate column name "j"
+Duplicate column name "j"

@@ -23,7 +23,7 @@ hello
 NULL
 
 statement ok
-ATTACH 'data/db/mixed_data_numeric.db' as mydb (TYPE sqlite);
+ATTACH 'data/db/mixed_data_numeric.db' as mydb (TYPE sqlite, all_varchar TRUE);
 
 query I
 select * from mydb.tbl;

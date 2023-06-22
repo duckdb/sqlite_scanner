@@ -31,6 +31,8 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 	auto &transaction = Transaction::Get(context, catalog).Cast<SQLiteTransaction>();
 	auto &db = transaction.GetDB();
 
+	result->all_varchar = sqlite_catalog.all_varchar;
+
 	if (!db.GetMaxRowId(name, result->max_rowid)) {
 		result->max_rowid = idx_t(-1);
 		result->rows_per_group = idx_t(-1);

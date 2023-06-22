@@ -17,11 +17,12 @@ class SQLiteSchemaEntry;
 
 class SQLiteCatalog : public Catalog {
 public:
-	explicit SQLiteCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode);
+	explicit SQLiteCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode, bool all_varchar);
 	~SQLiteCatalog();
 
 	string path;
 	AccessMode access_mode;
+	bool all_varchar;
 
 public:
 	void Initialize(bool load_builtin) override;

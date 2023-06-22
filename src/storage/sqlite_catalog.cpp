@@ -6,8 +6,8 @@
 
 namespace duckdb {
 
-SQLiteCatalog::SQLiteCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode)
-    : Catalog(db_p), path(path), access_mode(access_mode), in_memory(path == ":memory:"), active_in_memory(false) {
+SQLiteCatalog::SQLiteCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode, bool all_varchar)
+    : Catalog(db_p), path(path), access_mode(access_mode), all_varchar(all_varchar), in_memory(path == ":memory:"), active_in_memory(false) {
 	if (InMemory()) {
 		in_memory_db = SQLiteDB::Open(path, false, true);
 	}

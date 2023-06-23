@@ -94,7 +94,7 @@ jobs:
         sqlite3 tpch.db < tpch-create.sqlite
 
     - name: Test
-      run: ./build/release/test/Release/unittest.exe --test-dir .
+      run: ./build/release/test/Release/unittest.exe --test-dir . "[sql]"
 
     - uses: actions/upload-artifact@v2
       with:

@@ -21,7 +21,7 @@ jobs:
 
     - name: Install ninja-build
       run: |
-        yum -y install https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/n/ninja-build-1.10.2-3.el7.x86_64.rpm
+        yum install -y epel-release
         yum install -y ninja-build
 
     - name: Install recent git yay

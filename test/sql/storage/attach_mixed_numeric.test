@@ -1,0 +1,31 @@
+require sqlite_scanner
+
+# load from a database with a numeric column that has mixed types
+
+# using the all_varchar option, without the setting
+statement ok
+ATTACH 'data/mixed_data_numeric.db' as mydb (TYPE sqlite, all_varchar TRUE);
+
+query I
+select * from mydb.tbl;
+----
+42
+hello
+NULL
+
+statement ok
+DETACH mydb;
+
+statement ok
+SET sqlite_all_varchar=true
+
+# using the setting, not the all_varchar option
+statement ok
+ATTACH 'data/mixed_data_numeric.db' as mydb (TYPE sqlite);
+
+query I
+select * from mydb.tbl;
+----
+42
+hello
+NULL

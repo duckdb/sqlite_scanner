@@ -6,11 +6,21 @@ require sqlite_scanner
 
 # load from a database with a numeric column that has mixed types
 
-# Invalid type in column "a": expected float or integer, found "hello" of type "text" instead.
 statement error
 select * from sqlite_scan('data/db/mixed_data_numeric.db', 'tbl');
 ----
+Invalid type in column "a": expected float or integer, found "hello" of type "text" instead.
+
+# using the all_varchar option, without the setting
+statement ok
+ATTACH 'data/mixed_data_numeric.db' as mydb (TYPE sqlite, all_varchar TRUE);
+
+query I
+select * from mydb.tbl;
+----
+42
 hello
+NULL
 
 statement ok
 SET sqlite_all_varchar=true
@@ -22,11 +32,12 @@ select * from sqlite_scan('data/db/mixed_data_numeric.db', 'tbl');
 hello
 NULL
 
+# using the setting, not the all_varchar option
 statement ok
-ATTACH 'data/db/mixed_data_numeric.db' as mydb (TYPE sqlite, all_varchar TRUE);
+ATTACH 'data/db/mixed_data_numeric.db' as mydb2 (TYPE sqlite);
 
 query I
-select * from mydb.tbl;
+select * from mydb2.tbl;
 ----
 42
 hello

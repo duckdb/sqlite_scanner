@@ -39,10 +39,19 @@ jobs:
         run: |
           make release
 
+      - name: Setup test database
+        run: |
+          choco install sqlite -y
+          ./build/release/Release/duckdb.exe < data/sql/tpch-export.duckdb
+          sqlite3 data/db/tpch.db < data/sql/tpch-create.sqlite
+
       - name: Test Extension
         shell: bash
+        env:
+          SQLITE_TPCH_GENERATED: 1
         run: |
-          build/release/test/Release/unittest.exe --test-dir . "[sql]"
+          build/release/test/Release/unittest.exe --test-dir . "[scanner]"
+          build/release/test/Release/unittest.exe --test-dir . "[storage]"
 
       - uses: actions/upload-artifact@v2
         with:

@@ -55,9 +55,17 @@ jobs:
         run: |
           make release
 
+      - name: Setup test database
+        run: |
+          brew install sqlite
+          ./build/release/duckdb < data/sql/tpch-export.duckdb
+          sqlite3 data/db/tpch.db < data/sql/tpch-create.sqlite
+
       - name: Test Extension
         if: ${{ matrix.osx_build_arch == 'x86_64'}}
         shell: bash
+        env:
+          SQLITE_TPCH_GENERATED: 1
         run: |
           make test
 

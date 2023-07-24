@@ -78,6 +78,13 @@ jobs:
       run: |
         make release
 
+    - name: Generate test data for tpch test
+      if: ${{ matrix.arch != 'linux_amd64_gcc4'}}
+      run: |
+        ./build/release/duckdb < data/sql/tpch-export.duckdb
+        sqlite3 data/db/tpch.db < data/sql/tpch-create.sqlite
+        echo "SQLITE_TPCH_GENERATED=1" >> $GITHUB_ENV
+
     - name: Test extension
       if: ${{ matrix.arch != 'linux_arm64'}}
       run: |

@@ -1,0 +1,70 @@
+# name: test/sql/storage/attach_catalog.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH '__TEST_DIR__/attach_catalog.db' AS s (TYPE SQLITE)
+
+# schemas
+statement error
+CREATE SCHEMA s.s1
+----
+SQLite databases do not support creating new schemas
+
+statement error
+DROP SCHEMA s.s1
+----
+SQLite databases do not support dropping schemas
+
+# macros
+statement error
+CREATE MACRO s.plus1(a) AS a+1
+----
+SQLite databases do not support creating functions
+
+statement error
+DROP MACRO s.plus1
+----
+does not exist
+
+statement error
+SELECT s.plus1(42);
+----
+does not exist
+
+statement error
+SELECT s.plus1(42) over ();
+----
+does not exist
+
+# sequences
+statement error
+CREATE SEQUENCE s.seq
+----
+SQLite databases do not support creating sequences
+
+statement error
+SELECT nextval('s.seq')
+----
+does not exist
+
+statement error
+DROP SEQUENCE s.seq
+----
+does not exist
+
+statement ok
+DROP SEQUENCE IF EXISTS s.seq
+
+# types
+statement error
+CREATE TYPE s.my_type as BLOB;
+----
+SQLite databases do not support creating types
+
+statement error
+SELECT 'a'::"s.my_type"
+----
+does not exist

@@ -1,0 +1,21 @@
+# name: test/sql/storage/attach_zero_negative_pk.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH 'data/db/zeropk.db' AS s
+
+query II
+FROM s.tbl
+----
+0	NULL
+
+statement ok
+ATTACH 'data/db/negativepk.db' AS s2
+
+query II
+FROM s2.tbl
+----
+-1	NULL

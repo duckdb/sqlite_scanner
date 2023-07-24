@@ -1,0 +1,16 @@
+# name: test/sql/scanner/float.test
+# description: Test float
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+statement ok
+CALL sqlite_attach('data/db/float.db');
+
+query I
+select * from my;
+----
+10.34
+0.042
+NULL
+42.0

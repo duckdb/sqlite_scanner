@@ -1,0 +1,14 @@
+# name:
+# description:
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+statement ok
+CALL sqlite_attach('data/db/longvarchar.db');
+
+query I
+select * from tbl;
+----
+abc
+def

@@ -1,0 +1,19 @@
+# name: test/sql/storage/attach_norowid.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH 'data/db/norowid.db' AS s (TYPE SQLITE, READ_ONLY)
+
+query II
+SELECT * FROM s.wordcount
+----
+hello	10
+world	5
+
+query II
+SELECT * FROM s.wordcount WHERE word='world'
+----
+world	5

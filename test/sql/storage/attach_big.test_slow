@@ -1,0 +1,32 @@
+# name: test/sql/storage/attach_big.test_slow
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH '__TEST_DIR__/attach_big.db' AS s (TYPE SQLITE)
+
+statement ok
+USE s;
+
+statement ok
+CREATE TABLE t(column1 INTEGER);
+
+statement ok
+INSERT INTO t VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9);
+
+query I
+CREATE TABLE big AS SELECT cast(t1.column1 as int) c FROM t t1, t t2, t t3, t t4, t t5, t t6, t t7;
+----
+10000000
+
+query I
+SELECT COUNT(*) FROM big;
+----
+10000000
+
+query I
+SELECT SUM(c) FROM big;
+----
+45000000

@@ -20,7 +20,13 @@ BUILD_FLAGS=-DEXTENSION_STATIC_BUILD=1 -DBUILD_EXTENSIONS="tpch" ${OSX_ARCH_FLAG
 CLIENT_FLAGS :=
 
 # These flags will make DuckDB build the extension
-EXTENSION_FLAGS=-DDUCKDB_EXTENSION_NAMES="sqlite_scanner" -DDUCKDB_EXTENSION_SQLITE_SCANNER_PATH="$(PROJ_DIR)" -DDUCKDB_EXTENSION_SQLITE_SCANNER_SHOULD_LINK=1 -DDUCKDB_EXTENSION_SQLITE_SCANNER_INCLUDE_PATH="$(PROJ_DIR)src/include"
+EXTENSION_FLAGS= \
+-DDUCKDB_EXTENSION_NAMES="sqlite_scanner" \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_PATH="$(PROJ_DIR)" \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_SHOULD_LINK=0 \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_LOAD_TESTS=1 \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_TEST_PATH=$(PROJ_DIR)test \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_INCLUDE_PATH="$(PROJ_DIR)src/include" \
 
 pull:
 	git submodule init
@@ -44,12 +50,10 @@ release:
 test: test_release
 
 test_release: release
-	./build/release/test/unittest --test-dir . "[scanner]"
-	./build/release/test/unittest --test-dir . "[storage]"
+	./build/release/test/unittest "$(PROJ_DIR)test/*"
 
 test_debug: debug
-	./build/release/test/unittest --test-dir . "[scanner]"
-	./build/release/test/unittest --test-dir . "[storage]"
+	./build/release/test/unittest "$(PROJ_DIR)test/*"
 
 format:
 	find src/ -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i

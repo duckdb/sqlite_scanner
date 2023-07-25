@@ -37,7 +37,7 @@ static void LoadInternal(DatabaseInstance &db) {
 	con.Commit();
 }
 
-void Sqlite_scannerExtension::Load(DuckDB &db) {
+void SqliteScannerExtension::Load(DuckDB &db) {
         LoadInternal(*db.instance);
 }
 

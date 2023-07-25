@@ -50,8 +50,8 @@ jobs:
         env:
           SQLITE_TPCH_GENERATED: 1
         run: |
-          build/release/test/Release/unittest.exe --test-dir . "[scanner]"
-          build/release/test/Release/unittest.exe --test-dir . "[storage]"
+          export EXT_PATH=`pwd`/test/sql
+          build/release/test/Release/unittest.exe `$EXT_PATH*`
 
       - uses: actions/upload-artifact@v2
         with:

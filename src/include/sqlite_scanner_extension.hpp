@@ -8,7 +8,7 @@
 
 using namespace duckdb;
 
-class Sqlite_scannerExtension : public Extension {
+class SqliteScannerExtension : public Extension {
 public:
   std::string Name() override {
     return "sqlite_scanner";

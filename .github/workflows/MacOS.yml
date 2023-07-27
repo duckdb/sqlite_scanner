@@ -1,0 +1,77 @@
+name: MacOS
+on: [push, pull_request,repository_dispatch]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' || github.sha }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  macos:
+    name: MacOS Release (${{ matrix.osx_build_arch }})
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        # Add commits/tags to build against other DuckDB versions
+        duckdb_version: [ '<submodule_version>' ]
+        osx_build_arch: [ 'x86_64', 'arm64' ]
+        include:
+          - osx_build_arch: 'x86_64'
+            duckdb_arch: 'osx_amd64'
+          - osx_build_arch: 'arm64'
+            duckdb_arch: 'osx_arm64'
+
+    env:
+      OSX_BUILD_ARCH: ${{ matrix.osx_build_arch }}
+      GEN: Ninja
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: 'true'
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Setup Ccache
+        uses: hendrikmuhs/ccache-action@main
+        with:
+          key: ${{ github.job }}-${{ matrix.duckdb_version }}
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
+      - name: Checkout DuckDB to version
+        if: ${{ matrix.duckdb_version != '<submodule_version>'}}
+        run: |
+          cd duckdb
+          git checkout ${{ matrix.duckdb_version }}
+
+      - name: Build extension
+        shell: bash
+        run: |
+          make release
+
+      - name: Setup test database
+        if: ${{ matrix.osx_build_arch == 'x86_64'}}
+        run: |
+          brew install sqlite
+          ./build/release/duckdb < data/sql/tpch-export.duckdb
+          sqlite3 data/db/tpch.db < data/sql/tpch-create.sqlite
+
+      - name: Test Extension
+        if: ${{ matrix.osx_build_arch == 'x86_64'}}
+        shell: bash
+        env:
+          SQLITE_TPCH_GENERATED: 1
+        run: |
+          make test
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: osx-${{ matrix.osx_build_arch }}-extension
+          path: |
+            build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension

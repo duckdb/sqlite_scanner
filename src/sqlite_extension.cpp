@@ -5,6 +5,7 @@
 
 #include "sqlite_scanner.hpp"
 #include "sqlite_storage.hpp"
+#include "sqlite_scanner_extension.hpp"
 
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
@@ -13,7 +14,7 @@ using namespace duckdb;
 
 extern "C" {
 
-DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
+static void LoadInternal(DatabaseInstance &db) {
 	Connection con(db);
 	con.BeginTransaction();
 	auto &context = *con.context;
@@ -34,6 +35,14 @@ DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
 	config.storage_extensions["sqlite_scanner"] = make_uniq<SQLiteStorageExtension>();
 
 	con.Commit();
+}
+
+void SqliteScannerExtension::Load(DuckDB &db) {
+        LoadInternal(*db.instance);
+}
+
+DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
+        LoadInternal(db);
 }
 
 DUCKDB_EXTENSION_API const char *sqlite_scanner_version() {

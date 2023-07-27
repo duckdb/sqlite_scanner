@@ -1,0 +1,43 @@
+# name: test/sql/storage/attach_keywords.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH '__TEST_DIR__/attach_keywords.db' AS s (TYPE SQLITE)
+
+statement ok
+CREATE TABLE s."TaBlE"("TABLE" INTEGER);
+
+statement ok
+INSERT INTO s.table VALUES (42);
+
+query I
+SELECT "TABLE" FROM s."TaBlE"
+----
+42
+
+query I
+SELECT "table" FROM s."table"
+----
+42
+
+statement ok
+CREATE TABLE s."this 'name' contains ""escaped quotes"""("this 'name' contains ""escaped quotes""" INTEGER);
+
+statement ok
+INSERT INTO s."this 'name' contains ""escaped quotes""" VALUES (84);
+
+query I
+SELECT "this 'name' contains ""escaped quotes""" FROM s."this 'name' contains ""escaped quotes"""
+----
+84
+
+statement ok
+ALTER TABLE s."this 'name' contains ""escaped quotes""" DROP COLUMN IF EXISTS "hello""world"
+
+statement error
+ALTER TABLE s."this 'name' contains ""escaped quotes""" DROP COLUMN "this 'name' contains ""escaped quotes"""
+----
+no other columns exist

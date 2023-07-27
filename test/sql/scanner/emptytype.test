@@ -1,0 +1,17 @@
+# name: test/sql/scanner/emptytype.test
+# description: Test emptytype
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+# load from a database with a column that has no type defined
+statement ok
+CALL sqlite_attach('data/db/emptytype.db');
+
+query I
+select * from tbl;
+----
+42
+hello
+NULL
+0.5

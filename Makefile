@@ -1,51 +1,63 @@
-.PHONY: all clean format debug release pull update
+.PHONY: all clean format debug release duckdb_debug duckdb_release pull update
 
 all: release
 
-OSX_BUILD_UNIVERSAL_FLAG=
-GENERATOR=
+MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
+PROJ_DIR := $(dir $(MKFILE_PATH))
+
+OSX_ARCH_FLAG=
+ifneq (${OSX_BUILD_ARCH}, "")
+	OSX_ARCH_FLAG=-DOSX_BUILD_ARCH=${OSX_BUILD_ARCH}
+endif
+
 ifeq ($(GEN),ninja)
 	GENERATOR=-G "Ninja"
+	FORCE_COLOR=-DFORCE_COLORED_OUTPUT=1
 endif
-ifeq (${OSX_BUILD_UNIVERSAL}, 1)
-	OSX_BUILD_UNIVERSAL_FLAG=-DOSX_BUILD_UNIVERSAL=1
-endif
-BUILD_FLAGS=-DEXTENSION_STATIC_BUILD=1 -DBUILD_TPCH_EXTENSION=1 ${OSX_BUILD_UNIVERSAL_FLAG}
 
-DUCKDB_DIRECTORY=
-ifndef DUCKDB_DIR
-	DUCKDB_DIRECTORY=duckdb
-else
-	DUCKDB_DIRECTORY=${DUCKDB_DIR}
-endif
+BUILD_FLAGS=-DEXTENSION_STATIC_BUILD=1 -DBUILD_EXTENSIONS="tpch" ${OSX_ARCH_FLAG}
+
+CLIENT_FLAGS :=
+
+# These flags will make DuckDB build the extension
+EXTENSION_FLAGS= \
+-DDUCKDB_EXTENSION_NAMES="sqlite_scanner" \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_PATH="$(PROJ_DIR)" \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_SHOULD_LINK=0 \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_LOAD_TESTS=1 \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_TEST_PATH=$(PROJ_DIR)test \
+-DDUCKDB_EXTENSION_SQLITE_SCANNER_INCLUDE_PATH="$(PROJ_DIR)src/include" \
 
 pull:
 	git submodule init
-	git submodule update --recursive --remote	
+	git submodule update --recursive --remote
 
 clean:
 	rm -rf build
+	cd duckdb && make clean
 
-debug: pull
-	mkdir -p build/debug && \
-	cd build/debug && \
-	cmake $(GENERATOR) -DCMAKE_BUILD_TYPE=Debug ${BUILD_FLAGS} ../../duckdb/CMakeLists.txt -DEXTERNAL_EXTENSION_DIRECTORIES=../../sqlite_scanner -B. && \
-	cmake --build . --config Debug
+# Main build
+debug:
+	mkdir -p  build/debug && \
+	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) ${CLIENT_FLAGS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Debug ${BUILD_FLAGS} -S ./duckdb/ -B build/debug && \
+	cmake --build build/debug --config Debug
 
-release: pull 
+release:
 	mkdir -p build/release && \
-	cd build/release && \
-	cmake $(GENERATOR) -DCMAKE_BUILD_TYPE=RelWithDebInfo ${BUILD_FLAGS} ../../duckdb/CMakeLists.txt -DEXTERNAL_EXTENSION_DIRECTORIES=../../sqlite_scanner -B. && \
-	cmake --build . --config Release
+	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) ${CLIENT_FLAGS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Release ${BUILD_FLAGS} -S ./duckdb/ -B build/release && \
+	cmake --build build/release --config Release
 
-test: release
-	./build/release/test/unittest --test-dir .
+test: test_release
+
+test_release: release
+	./build/release/test/unittest "$(PROJ_DIR)test/*"
+
+test_debug: debug
+	./build/release/test/unittest "$(PROJ_DIR)test/*"
 
 format:
-	cp ${DUCKDB_DIRECTORY}/.clang-format .
-	find src -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i
-	find . -iname CMakeLists.txt | xargs cmake-format -i
-	rm .clang-format
+	find src/ -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i
+	cmake-format -i CMakeLists.txt
 
 update:
 	git submodule update --remote --merge

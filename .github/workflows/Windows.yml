@@ -1,0 +1,60 @@
+name: Windows
+on: [push, pull_request,repository_dispatch]
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' || github.sha }}
+  cancel-in-progress: true
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  windows:
+    name: Release
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        # Add commits/tags to build against other DuckDB versions
+        duckdb_version: [ '<submodule_version>' ]
+    env:
+      GEN: Ninja
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          submodules: 'true'
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
+      - name: Checkout DuckDB to version
+        # Add commits/tags to build against other DuckDB versions
+        if: ${{ matrix.duckdb_version != '<submodule_version>'}}
+        run: |
+          cd duckdb
+          git checkout ${{ matrix.duckdb_version }}
+
+      - name: Build extension
+        run: |
+          make release
+
+      - name: Setup test database
+        run: |
+          choco install sqlite -y
+          ./build/release/Release/duckdb.exe < data/sql/tpch-export.duckdb
+          sqlite3 data/db/tpch.db < data/sql/tpch-create.sqlite
+
+      - name: Test Extension
+        shell: bash
+        env:
+          SQLITE_TPCH_GENERATED: 1
+        run: |
+          export EXT_PATH=`pwd`/test/sql
+          build/release/test/Release/unittest.exe `$EXT_PATH*`
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: windows-extension
+          path: |
+            build/release/extension/sqlite_scanner/sqlite_scanner.duckdb_extension

@@ -1,0 +1,156 @@
+# name: test/sql/scanner/chinook.test
+# description: Test chinook database
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+statement ok
+CALL sqlite_attach('data/db/chinook.db');
+
+query III
+SELECT * FROM albums LIMIT 10;
+----
+1	For Those About To Rock We Salute You	1
+2	Balls to the Wall	2
+3	Restless and Wild	2
+4	Let There Be Rock	1
+5	Big Ones	3
+6	Jagged Little Pill	4
+7	Facelift	5
+8	Warner 25 Anos	6
+9	Plays Metallica By Four Cellos	7
+10	Audioslave	8
+
+query II
+SELECT * FROM artists LIMIT 10;
+----
+1	AC/DC
+2	Accept
+3	Aerosmith
+4	Alanis Morissette
+5	Alice In Chains
+6	Antônio Carlos Jobim
+7	Apocalyptica
+8	Audioslave
+9	BackBeat
+10	Billy Cobham
+
+query IIIIIIIIIIIII
+SELECT * FROM customers LIMIT 10;
+----
+1	Luís	Gonçalves	Embraer - Empresa Brasileira de Aeronáutica S.A.	Av. Brigadeiro Faria Lima, 2170	São José dos Campos	SP	Brazil	12227-000	+55 (12) 3923-5555	+55 (12) 3923-5566	luisg@embraer.com.br	3
+2	Leonie	Köhler	NULL	Theodor-Heuss-Straße 34	Stuttgart	NULL	Germany	70174	+49 0711 2842222	NULL	leonekohler@surfeu.de	5
+3	François	Tremblay	NULL	1498 rue Bélanger	Montréal	QC	Canada	H2G 1A7	+1 (514) 721-4711	NULL	ftremblay@gmail.com	3
+4	Bjørn	Hansen	NULL	Ullevålsveien 14	Oslo	NULL	Norway	0171	+47 22 44 22 22	NULL	bjorn.hansen@yahoo.no	4
+5	František	Wichterlová	JetBrains s.r.o.	Klanova 9/506	Prague	NULL	Czech Republic	14700	+420 2 4172 5555	+420 2 4172 5555	frantisekw@jetbrains.com	4
+6	Helena	Holý	NULL	Rilská 3174/6	Prague	NULL	Czech Republic	14300	+420 2 4177 0449	NULL	hholy@gmail.com	5
+7	Astrid	Gruber	NULL	Rotenturmstraße 4, 1010 Innere Stadt	Vienne	NULL	Austria	1010	+43 01 5134505	NULL	astrid.gruber@apple.at	5
+8	Daan	Peeters	NULL	Grétrystraat 63	Brussels	NULL	Belgium	1000	+32 02 219 03 03	NULL	daan_peeters@apple.be	4
+9	Kara	Nielsen	NULL	Sønder Boulevard 51	Copenhagen	NULL	Denmark	1720	+453 3331 9991	NULL	kara.nielsen@jubii.dk	4
+10	Eduardo	Martins	Woodstock Discos	Rua Dr. Falcão Filho, 155	São Paulo	SP	Brazil	01007-010	+55 (11) 3033-5446	+55 (11) 3033-4564	eduardo@woodstock.com.br	4
+
+query IIIIIIIIIIIIIII
+SELECT * FROM employees LIMIT 10;
+----
+1	Adams	Andrew	General Manager	NULL	1962-02-18 00:00:00	2002-08-14 00:00:00	11120 Jasper Ave NW	Edmonton	AB	Canada	T5K 2N1	+1 (780) 428-9482	+1 (780) 428-3457	andrew@chinookcorp.com
+2	Edwards	Nancy	Sales Manager	1	1958-12-08 00:00:00	2002-05-01 00:00:00	825 8 Ave SW	Calgary	AB	Canada	T2P 2T3	+1 (403) 262-3443	+1 (403) 262-3322	nancy@chinookcorp.com
+3	Peacock	Jane	Sales Support Agent	2	1973-08-29 00:00:00	2002-04-01 00:00:00	1111 6 Ave SW	Calgary	AB	Canada	T2P 5M5	+1 (403) 262-3443	+1 (403) 262-6712	jane@chinookcorp.com
+4	Park	Margaret	Sales Support Agent	2	1947-09-19 00:00:00	2003-05-03 00:00:00	683 10 Street SW	Calgary	AB	Canada	T2P 5G3	+1 (403) 263-4423	+1 (403) 263-4289	margaret@chinookcorp.com
+5	Johnson	Steve	Sales Support Agent	2	1965-03-03 00:00:00	2003-10-17 00:00:00	7727B 41 Ave	Calgary	AB	Canada	T3B 1Y7	1 (780) 836-9987	1 (780) 836-9543	steve@chinookcorp.com
+6	Mitchell	Michael	IT Manager	1	1973-07-01 00:00:00	2003-10-17 00:00:00	5827 Bowness Road NW	Calgary	AB	Canada	T3B 0C5	+1 (403) 246-9887	+1 (403) 246-9899	michael@chinookcorp.com
+7	King	Robert	IT Staff	6	1970-05-29 00:00:00	2004-01-02 00:00:00	590 Columbia Boulevard West	Lethbridge	AB	Canada	T1K 5N8	+1 (403) 456-9986	+1 (403) 456-8485	robert@chinookcorp.com
+8	Callahan	Laura	IT Staff	6	1968-01-09 00:00:00	2004-03-04 00:00:00	923 7 ST NW	Lethbridge	AB	Canada	T1H 1Y8	+1 (403) 467-3351	+1 (403) 467-8772	laura@chinookcorp.com
+
+query II
+SELECT * FROM genres LIMIT 10;
+----
+1	Rock
+2	Jazz
+3	Metal
+4	Alternative & Punk
+5	Rock And Roll
+6	Blues
+7	Latin
+8	Reggae
+9	Pop
+10	Soundtrack
+
+query IIIIIIIII
+SELECT * FROM invoices LIMIT 10;
+----
+1	2	2009-01-01 00:00:00	Theodor-Heuss-Straße 34	Stuttgart	NULL	Germany	70174	1.98
+2	4	2009-01-02 00:00:00	Ullevålsveien 14	Oslo	NULL	Norway	0171	3.96
+3	8	2009-01-03 00:00:00	Grétrystraat 63	Brussels	NULL	Belgium	1000	5.94
+4	14	2009-01-06 00:00:00	8210 111 ST NW	Edmonton	AB	Canada	T6G 2C7	8.91
+5	23	2009-01-11 00:00:00	69 Salem Street	Boston	MA	USA	2113	13.86
+6	37	2009-01-19 00:00:00	Berger Straße 10	Frankfurt	NULL	Germany	60316	0.99
+7	38	2009-02-01 00:00:00	Barbarossastraße 19	Berlin	NULL	Germany	10779	1.98
+8	40	2009-02-01 00:00:00	8, Rue Hanovre	Paris	NULL	France	75002	1.98
+9	42	2009-02-02 00:00:00	9, Place Louis Barthou	Bordeaux	NULL	France	33000	3.96
+10	46	2009-02-03 00:00:00	3 Chatham Street	Dublin	Dublin	Ireland	NULL	5.94
+
+query IIIII
+SELECT * FROM invoice_items LIMIT 10;
+----
+1	1	2	0.99	1
+2	1	4	0.99	1
+3	2	6	0.99	1
+4	2	8	0.99	1
+5	2	10	0.99	1
+6	2	12	0.99	1
+7	3	16	0.99	1
+8	3	20	0.99	1
+9	3	24	0.99	1
+10	3	28	0.99	1
+
+query II
+SELECT * FROM media_types LIMIT 10;
+----
+1	MPEG audio file
+2	Protected AAC audio file
+3	Protected MPEG-4 video file
+4	Purchased AAC audio file
+5	AAC audio file
+
+query II
+SELECT * FROM playlists LIMIT 10;
+----
+1	Music
+2	Movies
+3	TV Shows
+4	Audiobooks
+5	90’s Music
+6	Audiobooks
+7	Movies
+8	Music
+9	Music Videos
+10	TV Shows
+
+
+query II
+SELECT * FROM playlist_track LIMIT 10;
+----
+1	3402
+1	3389
+1	3390
+1	3391
+1	3392
+1	3393
+1	3394
+1	3395
+1	3396
+1	3397
+
+query IIIIIIIII
+SELECT * FROM tracks LIMIT 10;
+----
+1	For Those About To Rock (We Salute You)	1	1	1	Angus Young, Malcolm Young, Brian Johnson	343719	11170334	0.99
+2	Balls to the Wall	2	2	1	NULL	342562	5510424	0.99
+3	Fast As a Shark	3	2	1	F. Baltes, S. Kaufman, U. Dirkscneider & W. Hoffman	230619	3990994	0.99
+4	Restless and Wild	3	2	1	F. Baltes, R.A. Smith-Diesel, S. Kaufman, U. Dirkscneider & W. Hoffman	252051	4331779	0.99
+5	Princess of the Dawn	3	2	1	Deaffy & R.A. Smith-Diesel	375418	6290521	0.99
+6	Put The Finger On You	1	1	1	Angus Young, Malcolm Young, Brian Johnson	205662	6713451	0.99
+7	Let's Get It Up	1	1	1	Angus Young, Malcolm Young, Brian Johnson	233926	7636561	0.99
+8	Inject The Venom	1	1	1	Angus Young, Malcolm Young, Brian Johnson	210834	6852860	0.99
+9	Snowballed	1	1	1	Angus Young, Malcolm Young, Brian Johnson	203102	6599424	0.99
+10	Evil Walks	1	1	1	Angus Young, Malcolm Young, Brian Johnson	263497	8611245	0.99

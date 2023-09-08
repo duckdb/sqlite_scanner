@@ -38,7 +38,7 @@ public:
 		return make_uniq<SQLiteCreateIndex>(std::move(info), table);
 	}
 
-	void Serialize(FieldWriter &writer) const override {
+	void Serialize(Serializer &serializer) const override {
 		throw InternalException("Cannot serialize SQLite Create index");
 	}
 

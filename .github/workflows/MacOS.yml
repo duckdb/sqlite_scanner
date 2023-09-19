@@ -15,16 +15,21 @@ jobs:
       matrix:
         # Add commits/tags to build against other DuckDB versions
         duckdb_version: [ '<submodule_version>' ]
-        osx_build_arch: [ 'x86_64', 'arm64' ]
+        vcpkg_version: [ '2023.04.15' ]
+        vcpkg_triplet: [ 'x64-osx', 'arm64-osx' ]
         include:
-          - osx_build_arch: 'x86_64'
+          - vcpkg_triplet: 'x64-osx'
+            osx_build_arch: 'x86_64'
             duckdb_arch: 'osx_amd64'
-          - osx_build_arch: 'arm64'
+          - vcpkg_triplet: 'arm64-osx'
+            osx_build_arch: 'arm64'
             duckdb_arch: 'osx_arm64'
 
     env:
+      VCPKG_TARGET_TRIPLET: ${{ matrix.vcpkg_triplet }}
       OSX_BUILD_ARCH: ${{ matrix.osx_build_arch }}
       GEN: Ninja
+      VCPKG_TOOLCHAIN_PATH: ${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake
 
     steps:
       - uses: actions/checkout@v3
@@ -43,6 +48,11 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: '3.7'
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 501db0f17ef6df184fcdbfbe0f87cde2313b6ab1
 
       - name: Checkout DuckDB to version
         if: ${{ matrix.duckdb_version != '<submodule_version>'}}

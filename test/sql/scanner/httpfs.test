@@ -1,0 +1,13 @@
+# name: test/sql/scanner/httpfs.test
+# description: test database over https
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+require httpfs
+
+statement ok
+FROM sqlite_scan('https://raw.githubusercontent.com/duckdblabs/sqlite_scanner/main/data/db/sakila.db', 'film');
+
+statement ok
+CALL sqlite_attach('https://raw.githubusercontent.com/duckdblabs/sqlite_scanner/main/data/db/count.db');

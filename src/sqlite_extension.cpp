@@ -16,6 +16,7 @@ using namespace duckdb;
 extern "C" {
 
 static void LoadInternal(DatabaseInstance &db) {
+	setdb(&db);
 	SqliteScanFunction sqlite_fun;
 	ExtensionUtil::RegisterFunction(db, sqlite_fun);
 

@@ -17,9 +17,12 @@
 
 namespace duckdb {
 
-ClientContext * clientcontext = nullptr;
-ClientContext * getclientcontext() {
-	return clientcontext;
+DatabaseInstance *_db;
+void setdb(DatabaseInstance *db) {
+	_db=db;
+}
+DatabaseInstance * getdb() {
+	return _db;
 }
 
 struct SqliteLocalState : public LocalTableFunctionState {
@@ -48,7 +51,6 @@ struct SqliteGlobalState : public GlobalTableFunctionState {
 
 static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunctionBindInput &input,
                                            vector<LogicalType> &return_types, vector<string> &names) {
-
 	auto result = make_uniq<SqliteBindData>();
 	result->file_name = input.inputs[0].GetValue<string>();
 	result->table_name = input.inputs[1].GetValue<string>();
@@ -88,7 +90,6 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 
 static void SqliteInitInternal(ClientContext &context, const SqliteBindData &bind_data, SqliteLocalState &local_state,
                                idx_t rowid_min, idx_t rowid_max) {
-	clientcontext = &context;
 	D_ASSERT(rowid_min <= rowid_max);
 
 	local_state.done = false;
@@ -277,7 +278,6 @@ struct AttachFunctionData : public TableFunctionData {
 
 static unique_ptr<FunctionData> AttachBind(ClientContext &context, TableFunctionBindInput &input,
                                            vector<LogicalType> &return_types, vector<string> &names) {
-	clientcontext = &context;
 
 	auto result = make_uniq<AttachFunctionData>();
 	result->file_name = input.inputs[0].GetValue<string>();
@@ -294,7 +294,6 @@ static unique_ptr<FunctionData> AttachBind(ClientContext &context, TableFunction
 }
 
 static void AttachFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
-	clientcontext = &context;
 	auto &data = data_p.bind_data->CastNoConst<AttachFunctionData>();
 	if (data.finished) {
 		return;

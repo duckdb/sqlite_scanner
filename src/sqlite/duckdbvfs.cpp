@@ -119,18 +119,6 @@
 
 #include "sqlite3.h"
 
-#include <assert.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/file.h>
-#include <sys/param.h>
-#include <unistd.h>
-#include <time.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <iostream>
-
 /*
 ** Size of the write buffer used by journal files in bytes.
 */
@@ -345,7 +333,6 @@ static int duckdbSync(sqlite3_file *pFile, int flags){
 static int duckdbFileSize(sqlite3_file *pFile, sqlite_int64 *pSize){
   DemoFile *p = (DemoFile*)pFile;
   int rc;                         /* Return code from fstat() call */
-  struct stat sStat;              /* Output of fstat() call */
 
   /* Flush the contents of the buffer to disk. As with the flush in the
   ** duckdbRead() method, it would be possible to avoid this and save a write
@@ -423,7 +410,8 @@ static int duckdbOpen(
     duckdbSectorSize,               /* xSectorSize */
     duckdbDeviceCharacteristics     /* xDeviceCharacteristics */
   };
-       auto &fs = duckdb::getclientcontext()->db->GetFileSystem();
+D_ASSERT(duckdb::getdb());
+       auto &fs = duckdb::getdb()->GetFileSystem();
 
   DemoFile *p = (DemoFile*)pFile; /* Populate this structure */
   int oflags = 0;                 /* flags to pass to open() call */
@@ -466,33 +454,36 @@ static int duckdbOpen(
 ** file has been synced to disk before returning.
 */
 static int duckdbDelete(sqlite3_vfs *pVfs, const char *zPath, int dirSync){
-  int rc;                         /* Return code */
+  //FIXME: This might need to be properly implemented
+  return SQLITE_OK;
 
-  rc = unlink(zPath);
-  if( rc!=0 && errno==ENOENT ) return SQLITE_OK;
+//  int rc;                         /* Return code */
 
-  if( rc==0 && dirSync ){
-    int dfd;                      /* File descriptor open on directory */
-    char *zSlash;
-    char zDir[MAXPATHNAME+1];     /* Name of directory containing file zPath */
+//  rc = unlink(zPath);
+//  if( rc!=0 && errno==ENOENT ) return SQLITE_OK;
+
+//  if( rc==0 && dirSync ){
+//    int dfd;                      /* File descriptor open on directory */
+//    char *zSlash;
+//    char zDir[MAXPATHNAME+1];     /* Name of directory containing file zPath */
 
     /* Figure out the directory name from the path of the file deleted. */
-    sqlite3_snprintf(MAXPATHNAME, zDir, "%s", zPath);
-    zDir[MAXPATHNAME] = '\0';
-    zSlash = strrchr(zDir,'/');
-    if( zSlash ){
-      /* Open a file-descriptor on the directory. Sync. Close. */
-      zSlash[0] = 0;
-      dfd = open(zDir, O_RDONLY, 0);
-      if( dfd<0 ){
-        rc = -1;
-      }else{
-        rc = fsync(dfd);
-        close(dfd);
-      }
-    }
-  }
-  return (rc==0 ? SQLITE_OK : SQLITE_IOERR_DELETE);
+//    sqlite3_snprintf(MAXPATHNAME, zDir, "%s", zPath);
+//    zDir[MAXPATHNAME] = '\0';
+//    zSlash = strrchr(zDir,'/');
+//    if( zSlash ){
+//      /* Open a file-descriptor on the directory. Sync. Close. */
+//      zSlash[0] = 0;
+//      dfd = open(zDir, O_RDONLY, 0);
+//      if( dfd<0 ){
+//        rc = -1;
+//      }else{
+//        rc = fsync(dfd);
+//        close(dfd);
+//      }
+//    }
+//  }
+//  return (rc==0 ? SQLITE_OK : SQLITE_IOERR_DELETE);
 }
 
 #ifndef F_OK
@@ -515,20 +506,23 @@ static int duckdbAccess(
   int flags, 
   int *pResOut
 ){
-  int rc;                         /* access() return code */
-  int eAccess = F_OK;             /* Second argument to access() */
-
-  assert( flags==SQLITE_ACCESS_EXISTS       /* access(zPath, F_OK) */
-       || flags==SQLITE_ACCESS_READ         /* access(zPath, R_OK) */
-       || flags==SQLITE_ACCESS_READWRITE    /* access(zPath, R_OK|W_OK) */
-  );
-
-  if( flags==SQLITE_ACCESS_READWRITE ) eAccess = R_OK|W_OK;
-  if( flags==SQLITE_ACCESS_READ )      eAccess = R_OK;
-
-  rc = access(zPath, eAccess);
-  *pResOut = (rc==0);
+  //FIXME: This might need to be properly implemented
+  *pResOut = false;
   return SQLITE_OK;
+//  int rc;                         /* access() return code */
+//  int eAccess = F_OK;             /* Second argument to access() */
+
+//  assert( flags==SQLITE_ACCESS_EXISTS       /* access(zPath, F_OK) */
+//       || flags==SQLITE_ACCESS_READ         /* access(zPath, R_OK) */
+//       || flags==SQLITE_ACCESS_READWRITE    /* access(zPath, R_OK|W_OK) */
+//  );
+
+//  if( flags==SQLITE_ACCESS_READWRITE ) eAccess = R_OK|W_OK;
+//  if( flags==SQLITE_ACCESS_READ )      eAccess = R_OK;
+
+//  rc = access(zPath, eAccess);
+//  *pResOut = (rc==0);
+//  return SQLITE_OK;
 }
 
 /*
@@ -602,8 +596,7 @@ static int duckdbRandomness(sqlite3_vfs *pVfs, int nByte, char *zByte){
 ** of microseconds slept for.
 */
 static int duckdbSleep(sqlite3_vfs *pVfs, int nMicro){
-  sleep(nMicro / 1000000);
-  usleep(nMicro % 1000000);
+  //FIXME: This might need to be properly implemented
   return nMicro;
 }
 

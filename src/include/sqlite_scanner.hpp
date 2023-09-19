@@ -13,6 +13,8 @@
 namespace duckdb {
 class SQLiteDB;
 
+ClientContext * getclientcontext();
+
 struct SqliteBindData : public TableFunctionData {
 	string file_name;
 	string table_name;

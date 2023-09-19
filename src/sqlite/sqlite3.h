@@ -10432,6 +10432,7 @@ SQLITE_API int sqlite3_rtree_geometry_callback(
   void *pContext
 );
 
+sqlite3_vfs *sqlite3_duckdbvfs();
 
 /*
 ** A pointer to a structure of the following type is passed as the first

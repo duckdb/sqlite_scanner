@@ -1,0 +1,24 @@
+# name: test/sql/scanner/issue44.test
+# description: Test issue #44
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+query IIIIIII
+SELECT * FROM sqlite_scan('data/db/issue44.db', 'clusters_and_visits')
+----
+
+query IIIIIII
+SELECT * FROM sqlite_scan('data/db/issue44.db', 'clusters')
+----
+
+statement ok
+ATTACH 'data/db/issue44.db' AS test_db
+
+query IIIIIII
+SELECT * FROM test_db.clusters_and_visits
+----
+
+query IIIIIII
+SELECT * FROM test_db.clusters
+----

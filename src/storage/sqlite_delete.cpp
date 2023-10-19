@@ -48,7 +48,7 @@ SinkResultType SQLiteDelete::Sink(ExecutionContext &context, DataChunk &chunk, O
 	auto &gstate = input.global_state.Cast<SQLiteDeleteGlobalState>();
 
 	chunk.Flatten();
-	auto &row_identifiers = chunk.data[0];
+	auto &row_identifiers = chunk.data.back();
 	auto row_data = FlatVector::GetData<row_t>(row_identifiers);
 	for (idx_t i = 0; i < chunk.size(); i++) {
 		gstate.statement.Bind<int64_t>(0, row_data[i]);

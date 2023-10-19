@@ -6,7 +6,7 @@ project(${TARGET_NAME})
 include_directories(src/sqlite)
 
 add_subdirectory(src)
-set(EXTENSION_OBJECT_FILES ${ALL_OBJECT_FILES} src/sqlite/sqlite3.c)
+set(EXTENSION_OBJECT_FILES ${ALL_OBJECT_FILES} src/sqlite/sqlite3.c src/sqlite/duckdbvfs.cpp)
 add_library(${EXTENSION_NAME} STATIC ${EXTENSION_OBJECT_FILES})
 
 set(PARAMETERS "-warnings")

@@ -13,6 +13,9 @@
 namespace duckdb {
 class SQLiteDB;
 
+DatabaseInstance *getdb(void);
+void setdb(DatabaseInstance *);
+
 struct SqliteBindData : public TableFunctionData {
 	string file_name;
 	string table_name;

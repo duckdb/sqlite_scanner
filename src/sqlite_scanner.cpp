@@ -17,6 +17,14 @@
 
 namespace duckdb {
 
+DatabaseInstance *_db;
+void setdb(DatabaseInstance *db) {
+	_db=db;
+}
+DatabaseInstance * getdb() {
+	return _db;
+}
+
 struct SqliteLocalState : public LocalTableFunctionState {
 	SQLiteDB *db;
 	SQLiteDB owned_db;
@@ -43,7 +51,6 @@ struct SqliteGlobalState : public GlobalTableFunctionState {
 
 static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunctionBindInput &input,
                                            vector<LogicalType> &return_types, vector<string> &names) {
-
 	auto result = make_uniq<SqliteBindData>();
 	result->file_name = input.inputs[0].GetValue<string>();
 	result->table_name = input.inputs[1].GetValue<string>();

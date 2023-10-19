@@ -1,0 +1,14 @@
+# name: test/sql/storage/rtree.test
+# description: Test loading an RTree table
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+statement ok
+ATTACH 'data/db/rtree.db' AS sqlite (TYPE SQLITE)
+
+query IIIII
+SELECT * FROM sqlite.demo_index
+----
+28215	-80.7812271118164	-80.60470581054688	35.20881271362305	35.297367095947266
+28216	-80.95728302001953	-80.84059143066406	35.23591995239258	35.367828369140625

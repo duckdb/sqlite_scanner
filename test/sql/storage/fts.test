@@ -1,0 +1,13 @@
+# name: test/sql/storage/fts.test
+# description: Test loading an FTS table
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+statement ok
+ATTACH 'data/db/fts.db' AS sqlite (TYPE SQLITE)
+
+query III
+SELECT * FROM sqlite.email
+----
+test@gmail.com	Title	Body

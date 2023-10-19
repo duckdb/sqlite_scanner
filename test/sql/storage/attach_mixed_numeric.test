@@ -1,0 +1,33 @@
+# name: test/sql/storage/attach_mixed_numeric.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+# load from a database with a numeric column that has mixed types
+
+# using the all_varchar option, without the setting
+statement ok
+ATTACH 'data/db/mixed_data_numeric.db' as mydb (TYPE sqlite);
+
+statement error
+select * from mydb.tbl;
+----
+Invalid type in column "a"
+
+statement ok
+DETACH mydb;
+
+statement ok
+SET sqlite_all_varchar=true
+
+# using the setting, not the all_varchar option
+statement ok
+ATTACH 'data/db/mixed_data_numeric.db' as mydb (TYPE sqlite);
+
+query I
+select * from mydb.tbl;
+----
+42
+hello
+NULL

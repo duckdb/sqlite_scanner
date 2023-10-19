@@ -7,7 +7,8 @@
 
 namespace duckdb {
 
-SQLiteTableEntry::SQLiteTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info, bool all_varchar)
+SQLiteTableEntry::SQLiteTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info,
+                                   bool all_varchar)
     : TableCatalogEntry(catalog, schema, info), all_varchar(all_varchar) {
 }
 

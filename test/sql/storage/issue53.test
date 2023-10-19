@@ -7,7 +7,7 @@ require sqlite_scanner
 statement ok
 ATTACH 'data/db/boolean.db' AS sqlite (TYPE SQLITE)
 
-query I
+query II
 SELECT name, type FROM pragma_table_info('sqlite.entry')
 ----
 id	BIGINT

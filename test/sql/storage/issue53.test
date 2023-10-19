@@ -17,4 +17,4 @@ query II
 SELECT * FROM sqlite.entry
 ----
 44	0
-55	0
+55	1

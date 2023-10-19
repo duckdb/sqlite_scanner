@@ -1,6 +1,7 @@
 #include "storage/sqlite_delete.hpp"
 #include "storage/sqlite_table_entry.hpp"
 #include "duckdb/planner/operator/logical_delete.hpp"
+#include "duckdb/planner/expression/bound_reference_expression.hpp"
 #include "storage/sqlite_catalog.hpp"
 #include "storage/sqlite_transaction.hpp"
 #include "sqlite_db.hpp"
@@ -8,8 +9,8 @@
 
 namespace duckdb {
 
-SQLiteDelete::SQLiteDelete(LogicalOperator &op, TableCatalogEntry &table)
-    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table) {
+SQLiteDelete::SQLiteDelete(LogicalOperator &op, TableCatalogEntry &table, idx_t row_id_index)
+    : PhysicalOperator(PhysicalOperatorType::EXTENSION, op.types, 1), table(table), row_id_index(row_id_index) {
 }
 
 //===--------------------------------------------------------------------===//
@@ -48,7 +49,7 @@ SinkResultType SQLiteDelete::Sink(ExecutionContext &context, DataChunk &chunk, O
 	auto &gstate = input.global_state.Cast<SQLiteDeleteGlobalState>();
 
 	chunk.Flatten();
-	auto &row_identifiers = chunk.data.back();
+	auto &row_identifiers = chunk.data[row_id_index];
 	auto row_data = FlatVector::GetData<row_t>(row_identifiers);
 	for (idx_t i = 0; i < chunk.size(); i++) {
 		gstate.statement.Bind<int64_t>(0, row_data[i]);
@@ -89,7 +90,8 @@ unique_ptr<PhysicalOperator> SQLiteCatalog::PlanDelete(ClientContext &context, L
 	if (op.return_chunk) {
 		throw BinderException("RETURNING clause not yet supported for deletion of a SQLite table");
 	}
-	auto insert = make_uniq<SQLiteDelete>(op, op.table);
+	auto &bound_ref = op.expressions[0]->Cast<BoundReferenceExpression>();
+	auto insert = make_uniq<SQLiteDelete>(op, op.table, bound_ref.index);
 	insert->children.push_back(std::move(plan));
 	return std::move(insert);
 }

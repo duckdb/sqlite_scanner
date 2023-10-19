@@ -5,8 +5,6 @@
 require sqlite_scanner
 
 # load from a database with a numeric column that has mixed types
-
-# using the all_varchar option, without the setting
 statement ok
 ATTACH 'data/db/mixed_data_numeric.db' as mydb (TYPE sqlite);
 
@@ -21,7 +19,7 @@ DETACH mydb;
 statement ok
 SET sqlite_all_varchar=true
 
-# using the setting, not the all_varchar option
+# attaching using the all_varchar setting
 statement ok
 ATTACH 'data/db/mixed_data_numeric.db' as mydb (TYPE sqlite);
 

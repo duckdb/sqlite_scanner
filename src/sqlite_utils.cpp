@@ -63,6 +63,12 @@ LogicalType SQLiteUtils::TypeToLogicalType(const string &sqlite_type) {
 	if (StringUtil::Contains(sqlite_type, "int")) {
 		return LogicalType::BIGINT;
 	}
+
+	// boolean
+	if (StringUtil::Contains(sqlite_type, "bool")) {
+		return LogicalType::BIGINT;
+	}
+
 	// If the declared type of the column contains any of the strings "CHAR",
 	// "CLOB", or "TEXT" then that column has TEXT affinity. Notice that the type
 	// VARCHAR contains the string "CHAR" and is thus assigned TEXT affinity.
@@ -89,7 +95,6 @@ LogicalType SQLiteUtils::TypeToLogicalType(const string &sqlite_type) {
 	// classes.
 	// ...
 	// we add some more extra rules to try to be somewhat sane
-
 	if (sqlite_type == "date") {
 		return LogicalType::DATE;
 	}

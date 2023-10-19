@@ -1,0 +1,34 @@
+# name: test/sql/storage/attach_delete_issue.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH '__TEST_DIR__/sqlite_db.db' AS sqlite_db (TYPE SQLITE)
+
+statement ok
+CREATE TABLE sqlite_db.tbl(id INTEGER, name VARCHAR);
+
+statement ok
+INSERT INTO sqlite_db.tbl VALUES (42, 'DuckDB');
+
+statement ok
+INSERT INTO sqlite_db.tbl VALUES (42, 'DuckDB');
+
+statement ok
+INSERT INTO sqlite_db.tbl VALUES (42, 'DuckDB');
+
+query II
+SELECT * FROM sqlite_db.tbl;
+----
+42	DuckDB
+42	DuckDB
+42	DuckDB
+
+statement ok
+DELETE FROM sqlite_db.tbl WHERE id=42;
+
+query II
+SELECT * FROM sqlite_db.tbl;
+----

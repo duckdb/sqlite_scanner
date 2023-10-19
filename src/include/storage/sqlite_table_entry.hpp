@@ -14,7 +14,9 @@ namespace duckdb {
 
 class SQLiteTableEntry : public TableCatalogEntry {
 public:
-	SQLiteTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info);
+	SQLiteTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info, bool all_varchar);
+
+	bool all_varchar;
 
 public:
 	unique_ptr<BaseStatistics> GetStatistics(ClientContext &context, column_t column_id) override;
@@ -23,9 +25,8 @@ public:
 
 	TableStorageInfo GetStorageInfo(ClientContext &context) override;
 
-        void BindUpdateConstraints(LogicalGet &get, LogicalProjection &proj, LogicalUpdate &update,
-                                                      ClientContext &context) override;
-
+	void BindUpdateConstraints(LogicalGet &get, LogicalProjection &proj, LogicalUpdate &update,
+	                           ClientContext &context) override;
 };
 
 } // namespace duckdb

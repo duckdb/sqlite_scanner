@@ -55,37 +55,46 @@ LogicalType SQLiteUtils::ToSQLiteType(const LogicalType &input) {
 }
 
 LogicalType SQLiteUtils::TypeToLogicalType(const string &sqlite_type) {
-	// type affinity rules are taken from here: https://www.sqlite.org/datatype3.html
+	// type affinity rules are taken from here:
+	// https://www.sqlite.org/datatype3.html
 
-	// If the declared type contains the string "INT" then it is assigned INTEGER affinity.
+	// If the declared type contains the string "INT" then it is assigned INTEGER
+	// affinity.
 	if (StringUtil::Contains(sqlite_type, "int")) {
 		return LogicalType::BIGINT;
 	}
-	// If the declared type of the column contains any of the strings "CHAR", "CLOB", or "TEXT" then that column has
-	// TEXT affinity. Notice that the type VARCHAR contains the string "CHAR" and is thus assigned TEXT affinity.
+
+	// boolean
+	if (StringUtil::Contains(sqlite_type, "bool")) {
+		return LogicalType::BIGINT;
+	}
+
+	// If the declared type of the column contains any of the strings "CHAR",
+	// "CLOB", or "TEXT" then that column has TEXT affinity. Notice that the type
+	// VARCHAR contains the string "CHAR" and is thus assigned TEXT affinity.
 	if (StringUtil::Contains(sqlite_type, "char") || StringUtil::Contains(sqlite_type, "clob") ||
 	    StringUtil::Contains(sqlite_type, "text")) {
 		return LogicalType::VARCHAR;
 	}
 
-	// If the declared type for a column contains the string "BLOB" or if no type is specified then the column has
-	// affinity BLOB.
+	// If the declared type for a column contains the string "BLOB" or if no type
+	// is specified then the column has affinity BLOB.
 	if (StringUtil::Contains(sqlite_type, "blob") || sqlite_type.empty()) {
 		return LogicalType::BLOB;
 	}
 
-	// If the declared type for a column contains any of the strings "REAL", "FLOA", or "DOUB" then the column has REAL
-	// affinity.
+	// If the declared type for a column contains any of the strings "REAL",
+	// "FLOA", or "DOUB" then the column has REAL affinity.
 	if (StringUtil::Contains(sqlite_type, "real") || StringUtil::Contains(sqlite_type, "floa") ||
 	    StringUtil::Contains(sqlite_type, "doub")) {
 		return LogicalType::DOUBLE;
 	}
 	// Otherwise, the affinity is NUMERIC.
 	// now numeric sounds simple, but it is rather complex:
-	// A column with NUMERIC affinity may contain values using all five storage classes.
+	// A column with NUMERIC affinity may contain values using all five storage
+	// classes.
 	// ...
 	// we add some more extra rules to try to be somewhat sane
-
 	if (sqlite_type == "date") {
 		return LogicalType::DATE;
 	}

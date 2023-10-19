@@ -56,8 +56,10 @@ test_debug: debug
 	./build/release/test/unittest "$(PROJ_DIR)test/*"
 
 format:
+	cp duckdb/.clang-format .
 	find src/ -iname *.hpp -o -iname *.cpp | xargs clang-format --sort-includes=0 -style=file -i
 	cmake-format -i CMakeLists.txt
+	rm .clang-format
 
 update:
 	git submodule update --remote --merge

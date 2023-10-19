@@ -199,7 +199,7 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 				auto val = stmt.GetValue<sqlite3_value *>(col_idx);
 				switch (out_vec.GetType().id()) {
 				case LogicalTypeId::BIGINT:
-					stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_INTEGER, col_idx);
+					stmt.CheckTypeMatches(bind_data, val, sqlite_column_type, SQLITE_INTEGER, col_idx);
 					FlatVector::GetData<int64_t>(out_vec)[out_idx] = sqlite3_value_int64(val);
 					break;
 				case LogicalTypeId::DOUBLE:
@@ -207,19 +207,17 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 					FlatVector::GetData<double>(out_vec)[out_idx] = sqlite3_value_double(val);
 					break;
 				case LogicalTypeId::VARCHAR:
-					if (!bind_data.all_varchar) {
-						stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_TEXT, col_idx);
-					}
+					stmt.CheckTypeMatches(bind_data, val, sqlite_column_type, SQLITE_TEXT, col_idx);
 					FlatVector::GetData<string_t>(out_vec)[out_idx] = StringVector::AddString(
 					    out_vec, (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
 				case LogicalTypeId::DATE:
-					stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_TEXT, col_idx);
+					stmt.CheckTypeMatches(bind_data, val, sqlite_column_type, SQLITE_TEXT, col_idx);
 					FlatVector::GetData<date_t>(out_vec)[out_idx] =
 					    Date::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
 				case LogicalTypeId::TIMESTAMP:
-					stmt.CheckTypeMatches(val, sqlite_column_type, SQLITE_TEXT, col_idx);
+					stmt.CheckTypeMatches(bind_data, val, sqlite_column_type, SQLITE_TEXT, col_idx);
 					FlatVector::GetData<timestamp_t>(out_vec)[out_idx] =
 					    Timestamp::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;

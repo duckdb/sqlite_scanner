@@ -1,5 +1,6 @@
 #include "sqlite_stmt.hpp"
 #include "sqlite_db.hpp"
+#include "sqlite_scanner.hpp"
 
 namespace duckdb {
 
@@ -55,8 +56,12 @@ void SQLiteStatement::Close() {
 	stmt = nullptr;
 }
 
-void SQLiteStatement::CheckTypeMatches(sqlite3_value *val, int sqlite_column_type, int expected_type, idx_t col_idx) {
+void SQLiteStatement::CheckTypeMatches(const SqliteBindData &bind_data, sqlite3_value *val, int sqlite_column_type, int expected_type, idx_t col_idx) {
 	D_ASSERT(stmt);
+	if (bind_data.all_varchar) {
+		// no type check required
+		return;
+	}
 	if (sqlite_column_type != expected_type) {
 		auto column_name = string(sqlite3_column_name(stmt, int(col_idx)));
 		auto value_as_text = string((char *)sqlite3_value_text(val));

@@ -7,8 +7,8 @@
 
 namespace duckdb {
 
-SQLiteTableEntry::SQLiteTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info)
-    : TableCatalogEntry(catalog, schema, info) {
+SQLiteTableEntry::SQLiteTableEntry(Catalog &catalog, SchemaCatalogEntry &schema, CreateTableInfo &info, bool all_varchar)
+    : TableCatalogEntry(catalog, schema, info), all_varchar(all_varchar) {
 }
 
 unique_ptr<BaseStatistics> SQLiteTableEntry::GetStatistics(ClientContext &context, column_t column_id) {
@@ -27,6 +27,7 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 	auto &sqlite_catalog = catalog.Cast<SQLiteCatalog>();
 	result->file_name = sqlite_catalog.path;
 	result->table_name = name;
+	result->all_varchar = all_varchar;
 
 	auto &transaction = Transaction::Get(context, catalog).Cast<SQLiteTransaction>();
 	auto &db = transaction.GetDB();

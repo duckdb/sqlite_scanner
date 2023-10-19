@@ -1,0 +1,16 @@
+# name: test/sql/storage/issue47.test
+# description: Test issue #47 - Mismatch type error despite sqlite_all_Varchar
+# group: [sqlite_scanner]
+
+require sqlite_scanner
+
+statement ok
+SET GLOBAL sqlite_all_varchar=true;
+
+statement ok
+ATTACH 'data/db/issue47.db' as mydb (TYPE sqlite);
+
+query I
+SELECT * FROM mydb.table1;
+----
+1598313600

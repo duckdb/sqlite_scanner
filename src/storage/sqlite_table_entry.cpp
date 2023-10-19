@@ -36,8 +36,9 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 		result->rows_per_group = idx_t(-1);
 	}
 	if (!transaction.IsReadOnly() || sqlite_catalog.InMemory()) {
-		// for in-memory databases or if we have transaction-local changes we can only do a single-threaded scan
-		// set up the transaction's connection object as the global db
+		// for in-memory databases or if we have transaction-local changes we can
+		// only do a single-threaded scan set up the transaction's connection object
+		// as the global db
 		result->global_db = &db;
 		result->rows_per_group = idx_t(-1);
 	}

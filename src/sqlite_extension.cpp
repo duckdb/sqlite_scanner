@@ -29,11 +29,11 @@ static void LoadInternal(DatabaseInstance &db) {
 }
 
 void SqliteScannerExtension::Load(DuckDB &db) {
-        LoadInternal(*db.instance);
+	LoadInternal(*db.instance);
 }
 
 DUCKDB_EXTENSION_API void sqlite_scanner_init(duckdb::DatabaseInstance &db) {
-        LoadInternal(db);
+	LoadInternal(db);
 }
 
 DUCKDB_EXTENSION_API const char *sqlite_scanner_version() {

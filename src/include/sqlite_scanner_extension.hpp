@@ -10,10 +10,10 @@ using namespace duckdb;
 
 class SqliteScannerExtension : public Extension {
 public:
-  std::string Name() override {
-    return "sqlite_scanner";
-  }
-  void Load(DuckDB &db) override;
+	std::string Name() override {
+		return "sqlite_scanner";
+	}
+	void Load(DuckDB &db) override;
 };
 
 extern "C" {

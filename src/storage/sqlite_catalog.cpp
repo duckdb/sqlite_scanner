@@ -54,7 +54,8 @@ SQLiteDB *SQLiteCatalog::GetInMemoryDatabase() {
 	}
 	lock_guard<mutex> l(in_memory_lock);
 	if (active_in_memory) {
-		throw TransactionException("Only a single transaction can be active on an in-memory SQLite database at a time");
+		throw TransactionException("Only a single transaction can be active on an "
+		                           "in-memory SQLite database at a time");
 	}
 	active_in_memory = true;
 	return &in_memory_db;
@@ -66,8 +67,8 @@ void SQLiteCatalog::ReleaseInMemoryDatabase() {
 	}
 	lock_guard<mutex> l(in_memory_lock);
 	if (!active_in_memory) {
-		throw InternalException(
-		    "ReleaseInMemoryDatabase called but there is no active transaction on an in-memory database");
+		throw InternalException("ReleaseInMemoryDatabase called but there is no "
+		                        "active transaction on an in-memory database");
 	}
 	active_in_memory = false;
 }

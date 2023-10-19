@@ -37,7 +37,8 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 		flags |= SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
 	}
 	if (!is_shared) {
-		// FIXME: we should just make sure we are not re-using the same `sqlite3` object across threads
+		// FIXME: we should just make sure we are not re-using the same `sqlite3`
+		// object across threads
 		flags |= SQLITE_OPEN_NOMUTEX;
 	}
 	flags |= SQLITE_OPEN_EXRESCODE;
@@ -246,7 +247,8 @@ vector<IndexInfo> SQLiteDB::GetIndexInfo(const string &table_name) {
 	}
 
 	// now query the set of unique constraints for the table
-	stmt = Prepare(StringUtil::Format("SELECT name FROM pragma_index_list('%s') WHERE \"unique\" AND origin='u'",
+	stmt = Prepare(StringUtil::Format("SELECT name FROM pragma_index_list('%s') "
+	                                  "WHERE \"unique\" AND origin='u'",
 	                                  SQLiteUtils::SanitizeString(table_name)));
 	vector<string> unique_indexes;
 	while (stmt.Step()) {

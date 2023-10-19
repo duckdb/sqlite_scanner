@@ -133,7 +133,8 @@ string GetCreateViewSQL(CreateViewInfo &info) {
 
 optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateView(CatalogTransaction transaction, CreateViewInfo &info) {
 	if (info.sql.empty()) {
-		throw BinderException("Cannot create view in SQLite that originated from an empty SQL statement");
+		throw BinderException("Cannot create view in SQLite that originated from "
+		                      "an empty SQL statement");
 	}
 	if (info.on_conflict == OnCreateConflict::REPLACE_ON_CONFLICT) {
 		// CREATE OR REPLACE - drop any existing entries first (if any)
@@ -238,7 +239,8 @@ void SQLiteSchemaEntry::Alter(ClientContext &context, AlterInfo &info) {
 		AlterTable(transaction, alter.Cast<RemoveColumnInfo>());
 		break;
 	default:
-		throw BinderException("Unsupported ALTER TABLE type - SQLite tables only support RENAME TABLE, RENAME COLUMN, "
+		throw BinderException("Unsupported ALTER TABLE type - SQLite tables only "
+		                      "support RENAME TABLE, RENAME COLUMN, "
 		                      "ADD COLUMN and DROP COLUMN");
 	}
 	transaction.ClearTableEntry(info.name);

@@ -86,7 +86,8 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData &bin
 	D_ASSERT(rowid_min <= rowid_max);
 
 	local_state.done = false;
-	// we may have leftover statements or connections from a previous call to this function
+	// we may have leftover statements or connections from a previous call to this
+	// function
 	local_state.stmt.Close();
 	if (!local_state.db) {
 		local_state.owned_db = SQLiteDB::Open(bind_data.file_name.c_str());
@@ -102,7 +103,8 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData &bin
 	auto sql =
 	    StringUtil::Format("SELECT %s FROM \"%s\"", col_names, SQLiteUtils::SanitizeIdentifier(bind_data.table_name));
 	if (bind_data.rows_per_group != idx_t(-1)) {
-		// we are scanning a subset of the rows - generate a WHERE clause based on the rowid
+		// we are scanning a subset of the rows - generate a WHERE clause based on
+		// the rowid
 		auto where_clause = StringUtil::Format(" WHERE ROWID BETWEEN %d AND %d", rowid_min, rowid_max);
 		sql += where_clause;
 	} else {

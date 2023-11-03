@@ -19,6 +19,8 @@ DROP TABLE simple.test
 # verify the drop was successful
 statement error
 SELECT * FROM simple.test;
+----
+Catalog Error: Table with name test does not exist!
 
 statement error
 DROP TABLE simple.testx

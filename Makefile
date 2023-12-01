@@ -5,6 +5,12 @@ all: release
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 PROJ_DIR := $(dir $(MKFILE_PATH))
 
+ifeq ($(OS),Windows_NT)
+	TEST_PATH="/test/Release/unittest.exe"
+else
+	TEST_PATH="/test/unittest"
+endif
+
 OSX_ARCH_FLAG=
 ifneq (${OSX_BUILD_ARCH}, "")
 	OSX_ARCH_FLAG=-DOSX_BUILD_ARCH=${OSX_BUILD_ARCH}
@@ -49,13 +55,12 @@ release:
 	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) ${CLIENT_FLAGS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Release ${BUILD_FLAGS} -S ./duckdb/ -B build/release && \
 	cmake --build build/release --config Release
 
+# Main tests
 test: test_release
-
 test_release: release
-	./build/release/test/unittest "$(PROJ_DIR)test/*"
-
+	./build/release/$(TEST_PATH) "$(PROJ_DIR)test/*"
 test_debug: debug
-	./build/release/test/unittest "$(PROJ_DIR)test/*"
+	./build/debug/$(TEST_PATH) "$(PROJ_DIR)test/*"
 
 format:
 	cp duckdb/.clang-format .

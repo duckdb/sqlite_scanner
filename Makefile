@@ -58,7 +58,7 @@ release:
 	cmake --build build/release --config Release
 
 data/db/tpch.db: release
-	command -v sqlite3 || (command -v brew && brew install sqlite) || (command -v choco && choco install sqlite -y) || echo "no sqlite3"
+	command -v sqlite3 || (command -v brew && brew install sqlite) || (command -v choco && choco install sqlite -y) || (command -v apt-get && apt-get install -y sqlite3) || echo "no sqlite3"
 	./build/release/$(DUCKDB_PATH) < data/sql/tpch-export.duckdb
 	sqlite3 data/db/tpch.db < data/sql/tpch-create.sqlite
 

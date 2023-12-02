@@ -7,8 +7,10 @@ PROJ_DIR := $(dir $(MKFILE_PATH))
 
 ifeq ($(OS),Windows_NT)
 	TEST_PATH="/test/Release/unittest.exe"
+	DUCKDB_PATH="/Release/duckdb.exe"
 else
 	TEST_PATH="/test/unittest"
+	DUCKDB_PATH="/duckdb"
 endif
 
 OSX_ARCH_FLAG=
@@ -55,12 +57,17 @@ release:
 	cmake $(GENERATOR) $(FORCE_COLOR) $(EXTENSION_FLAGS) ${CLIENT_FLAGS} -DEXTENSION_STATIC_BUILD=1 -DCMAKE_BUILD_TYPE=Release ${BUILD_FLAGS} -S ./duckdb/ -B build/release && \
 	cmake --build build/release --config Release
 
+data/db/tpch.db: release
+	command -v sqlite3 || (command -v brew && brew install sqlite) || (command -v choco && choco install sqlite -y) || echo "no sqlite3"
+	./build/release/$(DUCKDB_PATH) < data/sql/tpch-export.duckdb
+	sqlite3 data/db/tpch.db < data/sql/tpch-create.sqlite
+
 # Main tests
 test: test_release
-test_release: release
-	./build/release/$(TEST_PATH) "$(PROJ_DIR)test/*"
-test_debug: debug
-	./build/debug/$(TEST_PATH) "$(PROJ_DIR)test/*"
+test_release: release data/db/tpch.db
+	SQLITE_TPCH_GENERATED=1 ./build/release/$(TEST_PATH) "$(PROJ_DIR)test/*"
+test_debug: debug data/db/tpch.db
+	SQLITE_TPCH_GENERATED=1 ./build/debug/$(TEST_PATH) "$(PROJ_DIR)test/*"
 
 format:
 	cp duckdb/.clang-format .

@@ -7,26 +7,26 @@ SQLiteTransactionManager::SQLiteTransactionManager(AttachedDatabase &db_p, SQLit
     : TransactionManager(db_p), sqlite_catalog(sqlite_catalog) {
 }
 
-Transaction *SQLiteTransactionManager::StartTransaction(ClientContext &context) {
+Transaction &SQLiteTransactionManager::StartTransaction(ClientContext &context) {
 	auto transaction = make_uniq<SQLiteTransaction>(sqlite_catalog, *this, context);
 	transaction->Start();
-	auto result = transaction.get();
+	auto &result = *transaction;
 	lock_guard<mutex> l(transaction_lock);
 	transactions[result] = std::move(transaction);
 	return result;
 }
 
-string SQLiteTransactionManager::CommitTransaction(ClientContext &context, Transaction *transaction) {
-	auto sqlite_transaction = (SQLiteTransaction *)transaction;
-	sqlite_transaction->Commit();
+string SQLiteTransactionManager::CommitTransaction(ClientContext &context, Transaction &transaction) {
+	auto &sqlite_transaction = transaction.Cast<SQLiteTransaction>();
+	sqlite_transaction.Commit();
 	lock_guard<mutex> l(transaction_lock);
 	transactions.erase(transaction);
 	return string();
 }
 
-void SQLiteTransactionManager::RollbackTransaction(Transaction *transaction) {
-	auto sqlite_transaction = (SQLiteTransaction *)transaction;
-	sqlite_transaction->Rollback();
+void SQLiteTransactionManager::RollbackTransaction(Transaction &transaction) {
+	auto &sqlite_transaction = transaction.Cast<SQLiteTransaction>();
+	sqlite_transaction.Rollback();
 	lock_guard<mutex> l(transaction_lock);
 	transactions.erase(transaction);
 }

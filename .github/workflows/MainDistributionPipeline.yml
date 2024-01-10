@@ -14,19 +14,19 @@ concurrency:
 jobs:
   duckdb-stable-build:
     name: Build extension binaries
-    uses: duckdb/duckdb/.github/workflows/_extension_distribution.yml@6812703823d1d66566bc7eaac2b6e4b273c85333
+    uses: samansmink/duckdb/.github/workflows/_extension_distribution.yml@d23e2842c91666c12cc7979aa5f7ad32e9d73753
     with:
       vcpkg_commit: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
-      duckdb_version: v0.9.2
+      duckdb_version: d23e2842c9
       extension_name: sqlite_scanner
 
   duckdb-stable-deploy:
     name: Deploy extension binaries
     needs: duckdb-stable-build
-    uses: ./.github/workflows/_extension_deploy.yml
+    uses: samansmink/duckdb/.github/workflows/_extension_deploy.yml@d23e2842c91666c12cc7979aa5f7ad32e9d73753
     secrets: inherit
     with:
-      duckdb_version: v0.9.2
+      duckdb_version: d23e2842c9
       extension_name: sqlite_scanner
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
       deploy_versioned: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}

@@ -14,20 +14,20 @@ concurrency:
 jobs:
   duckdb-stable-build:
     name: Build extension binaries
-    uses: samansmink/duckdb/.github/workflows/_extension_distribution.yml@d23e2842c91666c12cc7979aa5f7ad32e9d73753
+    uses: samansmink/duckdb/.github/workflows/_extension_distribution.yml@34dd2e909888806ce9e1b9620bc59ec4e27cea34
     with:
       vcpkg_commit: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
-      duckdb_version: d23e2842c9
+      duckdb_version: 34dd2e9098
       extension_name: sqlite_scanner
       exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads;linux_amd64;linux_amd64_gcc4;linux_arm64;osx_arm64;osx_amd64;windows_amd64'
 
   duckdb-stable-deploy:
     name: Deploy extension binaries
     needs: duckdb-stable-build
-    uses: samansmink/duckdb/.github/workflows/_extension_deploy.yml@d23e2842c91666c12cc7979aa5f7ad32e9d73753
+    uses: samansmink/duckdb/.github/workflows/_extension_deploy.yml@34dd2e909888806ce9e1b9620bc59ec4e27cea34
     secrets: inherit
     with:
-      duckdb_version: d23e2842c9
+      duckdb_version: 34dd2e9098
       extension_name: sqlite_scanner
       exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads;linux_amd64;linux_amd64_gcc4;linux_arm64;osx_arm64;osx_amd64;windows_amd64'
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}

@@ -1,4 +1,4 @@
 [submodule "duckdb"]
 	path = duckdb
-	url = https://github.com/samansmink/duckdb
-	branch = oote-rtools-build
+	url = https://github.com/duckdb/duckdb
+	branch = main

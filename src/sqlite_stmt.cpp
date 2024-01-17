@@ -135,14 +135,14 @@ void SQLiteStatement::BindText(idx_t col, const string_t &value) {
 }
 
 template <>
-void SQLiteStatement::Bind(idx_t col, nullptr_t value) {
+void SQLiteStatement::Bind(idx_t col, std::nullptr_t value) {
 	SQLiteUtils::Check(sqlite3_bind_null(stmt, col + 1), db);
 }
 
 void SQLiteStatement::BindValue(Vector &col, idx_t c, idx_t r) {
 	auto &mask = FlatVector::Validity(col);
 	if (!mask.RowIsValid(r)) {
-		Bind<nullptr_t>(c, nullptr);
+		Bind<std::nullptr_t>(c, nullptr);
 	} else {
 		switch (col.GetType().id()) {
 		case LogicalTypeId::BIGINT:

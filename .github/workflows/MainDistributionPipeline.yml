@@ -14,19 +14,21 @@ concurrency:
 jobs:
   duckdb-stable-build:
     name: Build extension binaries
-    uses: duckdb/duckdb/.github/workflows/_extension_distribution.yml@6812703823d1d66566bc7eaac2b6e4b273c85333
+    uses: duckdb/duckdb/.github/workflows/_extension_distribution.yml@a056c8e0a29f2f38d245afeb9e48cc308711aa21
     with:
       vcpkg_commit: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
-      duckdb_version: v0.9.2
+      duckdb_version: a056c8e0a2
       extension_name: sqlite_scanner
+      exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads'
 
   duckdb-stable-deploy:
     name: Deploy extension binaries
     needs: duckdb-stable-build
-    uses: ./.github/workflows/_extension_deploy.yml
+    uses: duckdb/duckdb/.github/workflows/_extension_deploy.yml@a056c8e0a29f2f38d245afeb9e48cc308711aa21
     secrets: inherit
     with:
-      duckdb_version: v0.9.2
+      duckdb_version: a056c8e0a2
       extension_name: sqlite_scanner
+      exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads'
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
       deploy_versioned: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}

@@ -5,12 +5,15 @@ all: release
 MKFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 PROJ_DIR := $(dir $(MKFILE_PATH))
 
+TEST_PATH="/test/unittest"
+DUCKDB_PATH="/duckdb"
+
+# For non-MinGW windows the path is slightly different
 ifeq ($(OS),Windows_NT)
+ifneq ($(CXX),g++)
 	TEST_PATH="/test/Release/unittest.exe"
 	DUCKDB_PATH="/Release/duckdb.exe"
-else
-	TEST_PATH="/test/unittest"
-	DUCKDB_PATH="/duckdb"
+endif
 endif
 
 OSX_ARCH_FLAG=
@@ -59,7 +62,7 @@ release:
 
 data/db/tpch.db: release
 	command -v sqlite3 || (command -v brew && brew install sqlite) || (command -v choco && choco install sqlite -y) || (command -v apt-get && apt-get install -y sqlite3) || echo "no sqlite3"
-	./build/release/$(DUCKDB_PATH) < data/sql/tpch-export.duckdb
+	./build/release/$(DUCKDB_PATH) < data/sql/tpch-export.duckdb || tree ./build/release || echo "neither tree not duck"
 	sqlite3 data/db/tpch.db < data/sql/tpch-create.sqlite
 
 # Main tests

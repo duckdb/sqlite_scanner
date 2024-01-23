@@ -166,6 +166,10 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 		StringUtil::Trim(sqlite_type);
 		auto column_type = all_varchar ? LogicalType::VARCHAR : SQLiteUtils::TypeToLogicalType(sqlite_type);
 
+		if (pk) {
+			primary_key_index = cid;
+			primary_keys.push_back(sqlite_colname);
+		}
 		ColumnDefinition column(std::move(sqlite_colname), std::move(column_type));
 		if (!default_value.empty() && default_value != "\"\"") {
 			auto expressions = Parser::ParseExpressionList(default_value);
@@ -177,10 +181,6 @@ void SQLiteDB::GetTableInfo(const string &table_name, ColumnList &columns, vecto
 		columns.AddColumn(std::move(column));
 		if (not_null) {
 			constraints.push_back(make_uniq<NotNullConstraint>(LogicalIndex(cid)));
-		}
-		if (pk) {
-			primary_key_index = cid;
-			primary_keys.push_back(sqlite_colname);
 		}
 		found = true;
 	}

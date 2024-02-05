@@ -28,10 +28,10 @@ SQLiteDB &SQLiteDB::operator=(SQLiteDB &&other) noexcept {
 	return *this;
 }
 
-SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
+SQLiteDB SQLiteDB::Open(const string &path, const SQLiteOpenOptions &options, bool is_shared) {
 	SQLiteDB result;
 	int flags = SQLITE_OPEN_PRIVATECACHE;
-	if (is_read_only) {
+	if (options.access_mode == AccessMode::READ_ONLY) {
 		flags |= SQLITE_OPEN_READONLY;
 	} else {
 		flags |= SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE;
@@ -45,6 +45,19 @@ SQLiteDB SQLiteDB::Open(const string &path, bool is_read_only, bool is_shared) {
 	auto rc = sqlite3_open_v2(path.c_str(), &result.db, flags, nullptr);
 	if (rc != SQLITE_OK) {
 		throw std::runtime_error("Unable to open database \"" + path + "\": " + string(sqlite3_errstr(rc)));
+	}
+	// default busy time-out of 5 seconds
+	if (options.busy_timeout > 0) {
+		if (options.busy_timeout > NumericLimits<int>::Maximum()) {
+			throw std::runtime_error("busy_timeout out of range - must be within valid range for type int");
+		}
+		rc = sqlite3_busy_timeout(result.db, int(options.busy_timeout));
+		if (rc != SQLITE_OK) {
+			throw std::runtime_error("Failed to set busy timeout");
+		}
+	}
+	if (!options.journal_mode.empty()) {
+		result.Execute("PRAGMA journal_mode=" + KeywordHelper::EscapeQuotes(options.journal_mode, '\''));
 	}
 	return result;
 }

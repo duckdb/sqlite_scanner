@@ -14,7 +14,16 @@ namespace duckdb {
 
 static unique_ptr<Catalog> SQLiteAttach(StorageExtensionInfo *storage_info, AttachedDatabase &db, const string &name,
                                         AttachInfo &info, AccessMode access_mode) {
-	return make_uniq<SQLiteCatalog>(db, info.path, access_mode);
+	SQLiteOpenOptions options;
+	options.access_mode = access_mode;
+	for(auto &entry : info.options) {
+		if (StringUtil::CIEquals(entry.first, "busy_timeout")) {
+			options.busy_timeout = entry.second.GetValue<uint64_t>();
+		} else if (StringUtil::CIEquals(entry.first, "journal_mode")) {
+			options.journal_mode = entry.second.ToString();
+		}
+	}
+	return make_uniq<SQLiteCatalog>(db, info.path, std::move(options));
 }
 
 static unique_ptr<TransactionManager> SQLiteCreateTransactionManager(StorageExtensionInfo *storage_info,

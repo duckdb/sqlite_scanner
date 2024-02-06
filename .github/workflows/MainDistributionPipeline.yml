@@ -27,7 +27,7 @@ jobs:
     uses: duckdb/duckdb/.github/workflows/_extension_deploy.yml@a056c8e0a29f2f38d245afeb9e48cc308711aa21
     secrets: inherit
     with:
-      duckdb_version: a056c8e0a2
+      duckdb_version: 4f040413468b2fee84ce4d124dfb058378db1456
       extension_name: sqlite_scanner
       exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads'
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}

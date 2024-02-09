@@ -15,7 +15,7 @@ class SQLiteTransaction;
 
 class SQLiteSchemaEntry : public SchemaCatalogEntry {
 public:
-	SQLiteSchemaEntry(Catalog &catalog);
+	SQLiteSchemaEntry(Catalog &catalog, CreateSchemaInfo &info);
 
 public:
 	optional_ptr<CatalogEntry> CreateTable(CatalogTransaction transaction, BoundCreateTableInfo &info) override;

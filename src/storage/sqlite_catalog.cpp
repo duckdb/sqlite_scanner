@@ -1,8 +1,10 @@
 #include "storage/sqlite_catalog.hpp"
+#include "duckdb/parser/parsed_data/create_schema_info.hpp"
+#include "duckdb/storage/database_size.hpp"
+#include "sqlite_db.hpp"
 #include "storage/sqlite_schema_entry.hpp"
 #include "storage/sqlite_transaction.hpp"
-#include "sqlite_db.hpp"
-#include "duckdb/storage/database_size.hpp"
+#include "duckdb/common/exception/transaction_exception.hpp"
 
 namespace duckdb {
 
@@ -17,7 +19,8 @@ SQLiteCatalog::~SQLiteCatalog() {
 }
 
 void SQLiteCatalog::Initialize(bool load_builtin) {
-	main_schema = make_uniq<SQLiteSchemaEntry>(*this);
+        CreateSchemaInfo info;
+	main_schema = make_uniq<SQLiteSchemaEntry>(*this, info);
 }
 
 optional_ptr<CatalogEntry> SQLiteCatalog::CreateSchema(CatalogTransaction transaction, CreateSchemaInfo &info) {

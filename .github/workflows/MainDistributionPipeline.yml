@@ -14,7 +14,7 @@ concurrency:
 jobs:
   duckdb-stable-build:
     name: Build extension binaries
-    uses: duckdb/duckdb/.github/workflows/_extension_distribution.yml@fefb0708ed10bf143b6843f9584536368658acdf
+    uses: ./.github/workflows/_extension_distribution.yml
     with:
       vcpkg_commit: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
       duckdb_version: fefb0708ed

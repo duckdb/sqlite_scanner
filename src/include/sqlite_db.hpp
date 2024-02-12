@@ -9,6 +9,7 @@
 #pragma once
 
 #include "sqlite_utils.hpp"
+#include "storage/sqlite_options.hpp"
 
 namespace duckdb {
 class SQLiteStatement;
@@ -29,7 +30,7 @@ public:
 	sqlite3 *db;
 
 public:
-	static SQLiteDB Open(const string &path, bool is_read_only = true, bool is_shared = false);
+	static SQLiteDB Open(const string &path, const SQLiteOpenOptions &options, bool is_shared = false);
 	bool TryPrepare(const string &query, SQLiteStatement &result);
 	SQLiteStatement Prepare(const string &query);
 	void Execute(const string &query);

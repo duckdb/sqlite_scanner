@@ -8,10 +8,10 @@
 
 namespace duckdb {
 
-SQLiteCatalog::SQLiteCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode)
-    : Catalog(db_p), path(path), access_mode(access_mode), in_memory(path == ":memory:"), active_in_memory(false) {
+SQLiteCatalog::SQLiteCatalog(AttachedDatabase &db_p, const string &path, SQLiteOpenOptions options_p)
+    : Catalog(db_p), path(path), options(std::move(options_p)), in_memory(path == ":memory:"), active_in_memory(false) {
 	if (InMemory()) {
-		in_memory_db = SQLiteDB::Open(path, false, true);
+		in_memory_db = SQLiteDB::Open(path, options, true);
 	}
 }
 

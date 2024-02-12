@@ -17,8 +17,7 @@ SQLiteTransaction::SQLiteTransaction(SQLiteCatalog &sqlite_catalog, TransactionM
 		db = sqlite_catalog.GetInMemoryDatabase();
 	} else {
 		// on-disk database - open a new database connection
-		owned_db = SQLiteDB::Open(sqlite_catalog.path,
-		                          sqlite_catalog.access_mode == AccessMode::READ_ONLY ? true : false, true);
+		owned_db = SQLiteDB::Open(sqlite_catalog.path, sqlite_catalog.options, true);
 		db = &owned_db;
 	}
 }

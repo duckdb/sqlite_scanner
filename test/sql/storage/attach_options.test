@@ -1,0 +1,24 @@
+# name: test/sql/storage/attach_options.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement error
+ATTACH ':memory:' AS mem (TYPE SQLITE, BUSY_TIMEOUT 'hello')
+----
+Could not convert string
+
+statement error
+ATTACH ':memory:' AS mem (TYPE SQLITE, BUSY_TIMEOUT 99999999999)
+----
+busy_timeout out of range
+
+statement ok
+ATTACH ':memory:' AS mem (TYPE SQLITE, BUSY_TIMEOUT 0)
+
+statement ok
+DETACH mem
+
+statement ok
+ATTACH ':memory:' AS mem (TYPE SQLITE, JOURNAL_MODE 'WAL')

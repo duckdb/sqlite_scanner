@@ -9,7 +9,7 @@
 #pragma once
 
 #include "duckdb/catalog/catalog.hpp"
-#include "duckdb/common/enums/access_mode.hpp"
+#include "sqlite_options.hpp"
 #include "sqlite_db.hpp"
 
 namespace duckdb {
@@ -17,11 +17,11 @@ class SQLiteSchemaEntry;
 
 class SQLiteCatalog : public Catalog {
 public:
-	explicit SQLiteCatalog(AttachedDatabase &db_p, const string &path, AccessMode access_mode);
+	explicit SQLiteCatalog(AttachedDatabase &db_p, const string &path, SQLiteOpenOptions options);
 	~SQLiteCatalog();
 
 	string path;
-	AccessMode access_mode;
+	SQLiteOpenOptions options;
 
 public:
 	void Initialize(bool load_builtin) override;

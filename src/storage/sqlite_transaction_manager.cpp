@@ -16,12 +16,12 @@ Transaction &SQLiteTransactionManager::StartTransaction(ClientContext &context) 
 	return result;
 }
 
-string SQLiteTransactionManager::CommitTransaction(ClientContext &context, Transaction &transaction) {
+ErrorData SQLiteTransactionManager::CommitTransaction(ClientContext &context, Transaction &transaction) {
 	auto &sqlite_transaction = transaction.Cast<SQLiteTransaction>();
 	sqlite_transaction.Commit();
 	lock_guard<mutex> l(transaction_lock);
 	transactions.erase(transaction);
-	return string();
+	return ErrorData();
 }
 
 void SQLiteTransactionManager::RollbackTransaction(Transaction &transaction) {

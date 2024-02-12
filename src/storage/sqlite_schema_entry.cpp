@@ -15,7 +15,7 @@
 
 namespace duckdb {
 
-SQLiteSchemaEntry::SQLiteSchemaEntry(Catalog &catalog) : SchemaCatalogEntry(catalog, DEFAULT_SCHEMA, true) {
+SQLiteSchemaEntry::SQLiteSchemaEntry(Catalog &catalog, CreateSchemaInfo &info) : SchemaCatalogEntry(catalog, info) {
 }
 
 SQLiteTransaction &GetSQLiteTransaction(CatalogTransaction transaction) {

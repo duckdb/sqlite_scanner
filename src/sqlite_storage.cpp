@@ -12,8 +12,9 @@
 
 namespace duckdb {
 
-static unique_ptr<Catalog> SQLiteAttach(StorageExtensionInfo *storage_info, AttachedDatabase &db, const string &name,
-                                        AttachInfo &info, AccessMode access_mode) {
+static unique_ptr<Catalog> SQLiteAttach(StorageExtensionInfo *storage_info, ClientContext &context,
+                                        AttachedDatabase &db, const string &name, AttachInfo &info,
+                                        AccessMode access_mode) {
 	SQLiteOpenOptions options;
 	options.access_mode = access_mode;
 	for(auto &entry : info.options) {

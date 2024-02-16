@@ -16,31 +16,41 @@ ifneq ($(CXX),g++)
 endif
 endif
 
-OSX_ARCH_FLAG=
+#### OSX config
+OSX_BUILD_FLAG=
 ifneq (${OSX_BUILD_ARCH}, "")
-	OSX_ARCH_FLAG=-DOSX_BUILD_ARCH=${OSX_BUILD_ARCH}
+	OSX_BUILD_FLAG=-DOSX_BUILD_ARCH=${OSX_BUILD_ARCH}
 endif
 
+#### VCPKG config
+VCPKG_TOOLCHAIN_PATH?=
+ifneq ("${VCPKG_TOOLCHAIN_PATH}", "")
+	TOOLCHAIN_FLAGS:=${TOOLCHAIN_FLAGS} -DVCPKG_MANIFEST_DIR='${PROJ_DIR}' -DVCPKG_BUILD=1 -DCMAKE_TOOLCHAIN_FILE='${VCPKG_TOOLCHAIN_PATH}'
+endif
+ifneq ("${VCPKG_TARGET_TRIPLET}", "")
+	TOOLCHAIN_FLAGS:=${TOOLCHAIN_FLAGS} -DVCPKG_TARGET_TRIPLET='${VCPKG_TARGET_TRIPLET}'
+endif
+
+#### Enable Ninja as generator
 ifeq ($(GEN),ninja)
-	GENERATOR=-G "Ninja"
-	FORCE_COLOR=-DFORCE_COLORED_OUTPUT=1
+	GENERATOR=-G "Ninja" -DFORCE_COLORED_OUTPUT=1
 endif
-
-BUILD_FLAGS=-DEXTENSION_STATIC_BUILD=1 -DBUILD_EXTENSIONS="tpch" ${OSX_ARCH_FLAG} -DDUCKDB_EXPLICIT_PLATFORM='${DUCKDB_PLATFORM}'
-
-CLIENT_FLAGS :=
 
 EXT_NAME=sqlite_scanner
 
 #### Configuration for this extension
-EXTENSION_FLAGS= \
--DDUCKDB_EXTENSION_NAMES="sqlite_scanner" \
--DDUCKDB_EXTENSION_SQLITE_SCANNER_PATH="$(PROJ_DIR)" \
--DDUCKDB_EXTENSION_SQLITE_SCANNER_SHOULD_LINK=0 \
--DDUCKDB_EXTENSION_SQLITE_SCANNER_LOAD_TESTS=1 \
--DDUCKDB_EXTENSION_SQLITE_SCANNER_TEST_PATH=$(PROJ_DIR)test \
--DDUCKDB_EXTENSION_SQLITE_SCANNER_INCLUDE_PATH="$(PROJ_DIR)src/include" \
+EXTENSION_NAME=SQLITE_SCANNER
+EXTENSION_FLAGS=\
+-DDUCKDB_EXTENSION_NAMES="${EXT_NAME}" \
+-DDUCKDB_EXTENSION_${EXTENSION_NAME}_PATH="$(PROJ_DIR)" \
+-DDUCKDB_EXTENSION_${EXTENSION_NAME}_SHOULD_LINK=0 \
+-DDUCKDB_EXTENSION_${EXTENSION_NAME}_LOAD_TESTS=1 \
+-DDUCKDB_EXTENSION_${EXTENSION_NAME}_INCLUDE_PATH="$(PROJ_DIR)src/include" \
+-DDUCKDB_EXTENSION_${EXTENSION_NAME}_TEST_PATH=$(PROJ_DIR)test \
 
+BUILD_FLAGS=-DEXTENSION_STATIC_BUILD=1 -DBUILD_EXTENSIONS="tpch" ${OSX_BUILD_FLAG} -DDUCKDB_EXPLICIT_PLATFORM='${DUCKDB_PLATFORM}'
+
+CLIENT_FLAGS :=
 pull:
 	git submodule init
 	git submodule update --recursive --remote
@@ -86,22 +96,22 @@ WASM_COMPILE_TIME_COMMON_FLAGS=-DWASM_LOADABLE_EXTENSIONS=1 -DBUILD_EXTENSIONS_O
 WASM_CXX_MVP_FLAGS=
 WASM_CXX_EH_FLAGS=$(WASM_CXX_MVP_FLAGS) -fwasm-exceptions -DWEBDB_FAST_EXCEPTIONS=1
 WASM_CXX_THREADS_FLAGS=$(WASM_COMPILE_TIME_EH_FLAGS) -DWITH_WASM_THREADS=1 -DWITH_WASM_SIMD=1 -DWITH_WASM_BULK_MEMORY=1
-WASM_LINK_TIME_FLAGS=
+WASM_LINK_TIME_FLAGS=-sSIDE_MODULE=1
 
 wasm_mvp:
 	mkdir -p build/wasm_mvp
 	emcmake cmake $(GENERATOR) $(EXTENSION_FLAGS) $(WASM_COMPILE_TIME_COMMON_FLAGS) -Bbuild/wasm_mvp -DCMAKE_CXX_FLAGS="$(WASM_CXX_MVP_FLAGS) -DDUCKDB_CUSTOM_PLATFORM=wasm_mvp" -S duckdb
 	emmake make -j8 -Cbuild/wasm_mvp
-	cd build/wasm_mvp/extension/${EXT_NAME} && emcc $f -sSIDE_MODULE=1 -o ../../${EXT_NAME}.duckdb_extension.wasm -O3 ${EXT_NAME}.duckdb_extension $(WASM_LINK_TIME_FLAGS)
+	cd build/wasm_mvp/extension/${EXT_NAME} && emcc $f -o ../../${EXT_NAME}.duckdb_extension.wasm -O3 ${EXT_NAME}.duckdb_extension.wasm $(WASM_LINK_TIME_FLAGS)
 
 wasm_eh:
 	mkdir -p build/wasm_eh
 	emcmake cmake $(GENERATOR) $(EXTENSION_FLAGS) $(WASM_COMPILE_TIME_COMMON_FLAGS) -Bbuild/wasm_eh -DCMAKE_CXX_FLAGS="$(WASM_CXX_EH_FLAGS) -DDUCKDB_CUSTOM_PLATFORM=wasm_eh" -S duckdb
 	emmake make -j8 -Cbuild/wasm_eh
-	cd build/wasm_eh/extension/${EXT_NAME} && emcc $f -sSIDE_MODULE=1 -o ../../${EXT_NAME}.duckdb_extension.wasm -O3 ${EXT_NAME}.duckdb_extension $(WASM_LINK_TIME_FLAGS)
+	cd build/wasm_eh/extension/${EXT_NAME} && emcc $f -o ../../${EXT_NAME}.duckdb_extension.wasm -O3 ${EXT_NAME}.duckdb_extension.wasm $(WASM_LINK_TIME_FLAGS)
 
 wasm_threads:
 	mkdir -p ./build/wasm_threads
 	emcmake cmake $(GENERATOR) $(EXTENSION_FLAGS) $(WASM_COMPILE_TIME_COMMON_FLAGS) -Bbuild/wasm_threads -DCMAKE_CXX_FLAGS="$(WASM_CXX_THREADS_FLAGS) -DDUCKDB_CUSTOM_PLATFORM=wasm_threads" -S duckdb
 	emmake make -j8 -Cbuild/wasm_threads
-	cd build/wasm_threads/extension/${EXT_NAME} && emcc $f -sSIDE_MODULE=1 -o ../../${EXT_NAME}.duckdb_extension.wasm -O3 ${EXT_NAME}.duckdb_extension $(WASM_LINK_TIME_FLAGS)
+	cd build/wasm_threads/extension/${EXT_NAME} && emcc $f -o ../../${EXT_NAME}.duckdb_extension.wasm -O3 ${EXT_NAME}.duckdb_extension.wasm $(WASM_LINK_TIME_FLAGS)

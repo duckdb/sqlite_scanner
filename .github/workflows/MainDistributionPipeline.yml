@@ -19,7 +19,6 @@ jobs:
       vcpkg_commit: a42af01b72c28a8e1d7b48107b33e4f286a55ef6
       duckdb_version: 0e784765f6
       extension_name: sqlite_scanner
-      exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads'
 
   duckdb-stable-deploy:
     name: Deploy extension binaries
@@ -29,6 +28,5 @@ jobs:
     with:
       duckdb_version: 0e784765f6
       extension_name: sqlite_scanner
-      exclude_archs: 'wasm_mvp;wasm_eh;wasm_threads'
       deploy_latest: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
       deploy_versioned: ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}

@@ -53,10 +53,14 @@ TableStorageInfo SQLiteTableEntry::GetStorageInfo(ClientContext &context) {
 	auto &transaction = Transaction::Get(context, catalog).Cast<SQLiteTransaction>();
 	auto &db = transaction.GetDB();
 	TableStorageInfo result;
-	if (!db.GetMaxRowId(name, result.cardinality)) {
+
+	idx_t cardinality;
+	if (!db.GetMaxRowId(name, cardinality)) {
 		// probably
 		result.cardinality = 10000;
 	}
+	result.cardinality = cardinality;
+
 	result.index_info = db.GetIndexInfo(name);
 	return result;
 }

@@ -25,7 +25,7 @@ public:
 
 	TableStorageInfo GetStorageInfo(ClientContext &context) override;
 
-	void BindUpdateConstraints(LogicalGet &get, LogicalProjection &proj, LogicalUpdate &update,
+	void BindUpdateConstraints(Binder &binder, LogicalGet &get, LogicalProjection &proj, LogicalUpdate &update,
 	                           ClientContext &context) override;
 };
 

@@ -16,7 +16,8 @@ unique_ptr<BaseStatistics> SQLiteTableEntry::GetStatistics(ClientContext &contex
 	return nullptr;
 }
 
-void SQLiteTableEntry::BindUpdateConstraints(LogicalGet &, LogicalProjection &, LogicalUpdate &, ClientContext &) {
+void SQLiteTableEntry::BindUpdateConstraints(Binder &, LogicalGet &, LogicalProjection &, LogicalUpdate &,
+											 ClientContext &) {
 }
 
 TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_ptr<FunctionData> &bind_data) {

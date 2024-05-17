@@ -17,7 +17,8 @@ SourceResultType SQLiteCreateIndex::GetData(ExecutionContext &context, DataChunk
                                             OperatorSourceInput &input) const {
 	auto &catalog = table.catalog;
 	auto &schema = catalog.GetSchema(context.client, info->schema);
-	schema.CreateIndex(context.client, *info, table);
+	auto transaction = schema.GetCatalogTransaction(context.client);
+	schema.CreateIndex(transaction, *info, table);
 
 	return SourceResultType::FINISHED;
 }

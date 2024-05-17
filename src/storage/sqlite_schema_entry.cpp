@@ -100,9 +100,9 @@ string GetCreateIndexSQL(CreateIndexInfo &info, TableCatalogEntry &tbl) {
 	return sql;
 }
 
-optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateIndex(ClientContext &context, CreateIndexInfo &info,
+optional_ptr<CatalogEntry> SQLiteSchemaEntry::CreateIndex(CatalogTransaction transaction, CreateIndexInfo &info,
                                                           TableCatalogEntry &table) {
-	auto &sqlite_transaction = SQLiteTransaction::Get(context, table.catalog);
+	auto &sqlite_transaction = SQLiteTransaction::Get(transaction.GetContext(), table.catalog);
 	sqlite_transaction.GetDB().Execute(GetCreateIndexSQL(info, table));
 	return nullptr;
 }
@@ -219,12 +219,12 @@ void SQLiteSchemaEntry::AlterTable(SQLiteTransaction &sqlite_transaction, Remove
 	sqlite_transaction.GetDB().Execute(sql);
 }
 
-void SQLiteSchemaEntry::Alter(ClientContext &context, AlterInfo &info) {
+void SQLiteSchemaEntry::Alter(CatalogTransaction catalog_transaction, AlterInfo &info) {
 	if (info.type != AlterType::ALTER_TABLE) {
 		throw BinderException("Only altering tables is supported for now");
 	}
 	auto &alter = info.Cast<AlterTableInfo>();
-	auto &transaction = SQLiteTransaction::Get(context, catalog);
+	auto &transaction = SQLiteTransaction::Get(catalog_transaction.GetContext(), catalog);
 	switch (alter.alter_table_type) {
 	case AlterTableType::RENAME_TABLE:
 		AlterTable(transaction, alter.Cast<RenameTableInfo>());

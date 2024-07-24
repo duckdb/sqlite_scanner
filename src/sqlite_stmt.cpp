@@ -130,6 +130,10 @@ void SQLiteStatement::Bind(idx_t col, double value) {
 	SQLiteUtils::Check(sqlite3_bind_double(stmt, col + 1, value), db);
 }
 
+void SQLiteStatement::BindBlob(idx_t col, const string_t &value) {
+	SQLiteUtils::Check(sqlite3_bind_blob(stmt, col + 1, value.GetDataUnsafe(), value.GetSize(), nullptr), db);
+}
+
 void SQLiteStatement::BindText(idx_t col, const string_t &value) {
 	SQLiteUtils::Check(sqlite3_bind_text(stmt, col + 1, value.GetDataUnsafe(), value.GetSize(), nullptr), db);
 }
@@ -152,6 +156,8 @@ void SQLiteStatement::BindValue(Vector &col, idx_t c, idx_t r) {
 			Bind<double>(c, FlatVector::GetData<double>(col)[r]);
 			break;
 		case LogicalTypeId::BLOB:
+			BindBlob(c, FlatVector::GetData<string_t>(col)[r]);
+			break;
 		case LogicalTypeId::VARCHAR:
 			BindText(c, FlatVector::GetData<string_t>(col)[r]);
 			break;

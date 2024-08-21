@@ -94,8 +94,10 @@ string SQLiteUpdate::GetName() const {
 	return "UPDATE";
 }
 
-string SQLiteUpdate::ParamsToString() const {
-	return table.name;
+InsertionOrderPreservingMap<string> SQLiteUpdate::ParamsToString() const {
+	InsertionOrderPreservingMap<string> result;
+	result["Table Name"] = table.name;
+	return result;
 }
 
 //===--------------------------------------------------------------------===//

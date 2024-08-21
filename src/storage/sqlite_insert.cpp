@@ -132,8 +132,10 @@ string SQLiteInsert::GetName() const {
 	return table ? "INSERT" : "CREATE_TABLE_AS";
 }
 
-string SQLiteInsert::ParamsToString() const {
-	return table ? table->name : info->Base().table;
+InsertionOrderPreservingMap<string> SQLiteInsert::ParamsToString() const {
+	InsertionOrderPreservingMap<string> result;
+	result["Table Name"] = table ? table->name : info->Base().table;
+	return result;
 }
 
 //===--------------------------------------------------------------------===//

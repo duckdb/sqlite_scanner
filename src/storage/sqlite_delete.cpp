@@ -78,8 +78,10 @@ string SQLiteDelete::GetName() const {
 	return "DELETE";
 }
 
-string SQLiteDelete::ParamsToString() const {
-	return table.name;
+InsertionOrderPreservingMap<string> SQLiteDelete::ParamsToString() const {
+	InsertionOrderPreservingMap<string> result;
+	result["Table Name"] = table.name;
+	return result;
 }
 
 //===--------------------------------------------------------------------===//

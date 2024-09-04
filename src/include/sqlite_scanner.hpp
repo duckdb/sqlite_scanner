@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb.hpp"
+#include "sqlite_utils.hpp"
 
 namespace duckdb {
 class SQLiteDB;
@@ -20,10 +21,10 @@ struct SqliteBindData : public TableFunctionData {
 	vector<string> names;
 	vector<LogicalType> types;
 
-	idx_t max_rowid = 0;
+	RowIdInfo row_id_info;
 	bool all_varchar = false;
 
-	idx_t rows_per_group = 122880;
+	optional_idx rows_per_group = 122880;
 	SQLiteDB *global_db;
 };
 

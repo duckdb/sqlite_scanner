@@ -24,4 +24,9 @@ public:
 	string ToSQLiteTypeAlias(const LogicalType &input);
 };
 
+struct RowIdInfo {
+	optional_idx min_rowid;
+	optional_idx max_rowid;
+};
+
 } // namespace duckdb

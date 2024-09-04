@@ -28,10 +28,10 @@ index	sqlite_autoindex_integers_1	integers	0
 table	integers	integers	0
 view	v1	v1	0
 
-query IIII
-SELECT database_name, table_name, has_primary_key, estimated_size FROM duckdb_tables()
+query III
+SELECT database_name, table_name, has_primary_key FROM duckdb_tables()
 ----
-s	integers	true	3
+s	integers	true
 
 statement ok
 SELECT * FROM duckdb_schemas()

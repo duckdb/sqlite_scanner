@@ -1,0 +1,25 @@
+# name: test/sql/storage/attach_giant_row_id.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH 'data/db/giant_row_id.db' AS s1 (TYPE SQLITE)
+
+query I
+SELECT * FROM s1.big_row_id
+----
+1797657063271174144
+
+query I
+SELECT * FROM s1.sparse_row_id
+----
+0
+1797657063271174144
+
+query I
+SELECT * FROM s1.sparse_row_id_smaller
+----
+0
+10000000000000

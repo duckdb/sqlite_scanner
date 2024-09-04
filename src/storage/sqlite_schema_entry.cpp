@@ -284,6 +284,9 @@ void SQLiteSchemaEntry::DropEntry(ClientContext &context, DropInfo &info) {
 	}
 	auto table = GetEntry(GetCatalogTransaction(context), info.type, info.name);
 	if (!table) {
+		if (info.if_not_found == OnEntryNotFound::RETURN_NULL) {
+			return;
+		}
 		throw InternalException("Failed to drop entry \"%s\" - could not find entry", info.name);
 	}
 	auto &transaction = SQLiteTransaction::Get(context, catalog);

@@ -22,5 +22,4 @@ struct SQLiteOpenOptions {
 	string journal_mode;
 };
 
-
 } // namespace duckdb

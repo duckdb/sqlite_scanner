@@ -17,7 +17,7 @@ static unique_ptr<Catalog> SQLiteAttach(StorageExtensionInfo *storage_info, Clie
                                         AccessMode access_mode) {
 	SQLiteOpenOptions options;
 	options.access_mode = access_mode;
-	for(auto &entry : info.options) {
+	for (auto &entry : info.options) {
 		if (StringUtil::CIEquals(entry.first, "busy_timeout")) {
 			options.busy_timeout = entry.second.GetValue<uint64_t>();
 		} else if (StringUtil::CIEquals(entry.first, "journal_mode")) {

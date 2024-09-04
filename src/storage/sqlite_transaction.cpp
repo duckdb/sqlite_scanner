@@ -82,6 +82,7 @@ optional_ptr<CatalogEntry> SQLiteTransaction::GetCatalogEntry(const string &entr
 	case CatalogType::INDEX_ENTRY: {
 		CreateIndexInfo info;
 		info.index_name = entry_name;
+		info.constraint_type = IndexConstraintType::NONE;
 
 		string table_name;
 		string sql;

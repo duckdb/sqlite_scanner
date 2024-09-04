@@ -23,18 +23,21 @@ struct SqliteLocalState : public LocalTableFunctionState {
 	SQLiteStatement stmt;
 	bool done = false;
 	vector<column_t> column_ids;
+	//! The amount of rows we scanned as part of this row group
+	idx_t scan_count = 1;
 
 	~SqliteLocalState() {
 	}
 };
 
 struct SqliteGlobalState : public GlobalTableFunctionState {
-	SqliteGlobalState(idx_t max_threads) : max_threads(max_threads) {
+	explicit SqliteGlobalState(idx_t max_threads) : max_threads(max_threads) {
 	}
 
 	mutex lock;
 	idx_t position = 0;
 	idx_t max_threads;
+	idx_t rows_per_group = 0;
 
 	idx_t MaxThreads() const override {
 		return max_threads;
@@ -72,9 +75,8 @@ static unique_ptr<FunctionData> SqliteBind(ClientContext &context, TableFunction
 		throw std::runtime_error("no columns for table " + result->table_name);
 	}
 
-	if (!db.GetMaxRowId(result->table_name, result->max_rowid)) {
-		result->max_rowid = idx_t(-1);
-		result->rows_per_group = idx_t(-1);
+	if (!db.GetRowIdInfo(result->table_name, result->row_id_info)) {
+		result->rows_per_group = optional_idx();
 	}
 
 	result->names = names;
@@ -106,7 +108,7 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData &bin
 
 	auto sql =
 	    StringUtil::Format("SELECT %s FROM \"%s\"", col_names, SQLiteUtils::SanitizeIdentifier(bind_data.table_name));
-	if (bind_data.rows_per_group != idx_t(-1)) {
+	if (bind_data.rows_per_group.IsValid()) {
 		// we are scanning a subset of the rows - generate a WHERE clause based on
 		// the rowid
 		auto where_clause = StringUtil::Format(" WHERE ROWID BETWEEN %d AND %d", rowid_min, rowid_max);
@@ -121,7 +123,11 @@ static void SqliteInitInternal(ClientContext &context, const SqliteBindData &bin
 static unique_ptr<NodeStatistics> SqliteCardinality(ClientContext &context, const FunctionData *bind_data_p) {
 	D_ASSERT(bind_data_p);
 	auto &bind_data = bind_data_p->Cast<SqliteBindData>();
-	return make_uniq<NodeStatistics>(bind_data.max_rowid);
+	if (!bind_data.row_id_info.max_rowid.IsValid()) {
+		return nullptr;
+	}
+	auto row_count = bind_data.row_id_info.max_rowid.GetIndex() - bind_data.row_id_info.min_rowid.GetIndex();
+	return make_uniq<NodeStatistics>(row_count);
 }
 
 static idx_t SqliteMaxThreads(ClientContext &context, const FunctionData *bind_data_p) {
@@ -130,17 +136,41 @@ static idx_t SqliteMaxThreads(ClientContext &context, const FunctionData *bind_d
 	if (bind_data.global_db) {
 		return 1;
 	}
-	return bind_data.max_rowid / bind_data.rows_per_group;
+	if (!bind_data.row_id_info.max_rowid.IsValid()) {
+		return 1;
+	}
+	auto row_count = bind_data.row_id_info.max_rowid.GetIndex() - bind_data.row_id_info.min_rowid.GetIndex();
+	return row_count / bind_data.rows_per_group.GetIndex();
 }
 
 static bool SqliteParallelStateNext(ClientContext &context, const SqliteBindData &bind_data, SqliteLocalState &lstate,
                                     SqliteGlobalState &gstate) {
 	lock_guard<mutex> parallel_lock(gstate.lock);
-	if (gstate.position < bind_data.max_rowid) {
+	if (!bind_data.rows_per_group.IsValid()) {
+		// not doing a parallel scan - scan everything at once
+		if (gstate.position > 0) {
+			// already scanned
+			return false;
+		}
+		SqliteInitInternal(context, bind_data, lstate, 0, 0);
+		gstate.position = static_cast<idx_t>(-1);
+		lstate.scan_count = 0;
+		return true;
+	}
+	auto max_row_id = bind_data.row_id_info.max_rowid.GetIndex();
+	if (gstate.position < max_row_id) {
+		if (lstate.scan_count == 0 && gstate.rows_per_group < max_row_id) {
+			// we scanned no rows in our previous slice - double the rows per group
+			gstate.rows_per_group *= 2;
+		}
+		if (gstate.rows_per_group == 0) {
+			throw InternalException("SqliteParallelStateNext - gstate.rows_per_group not set");
+		}
 		auto start = gstate.position;
-		auto end = start + bind_data.rows_per_group - 1;
+		auto end = MinValue<idx_t>(max_row_id, start + gstate.rows_per_group - 1);
 		SqliteInitInternal(context, bind_data, lstate, start, end);
 		gstate.position = end + 1;
+		lstate.scan_count = 0;
 		return true;
 	}
 	return false;
@@ -161,8 +191,16 @@ SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, G
 
 static unique_ptr<GlobalTableFunctionState> SqliteInitGlobalState(ClientContext &context,
                                                                   TableFunctionInitInput &input) {
+	auto &bind_data = input.bind_data->Cast<SqliteBindData>();
 	auto result = make_uniq<SqliteGlobalState>(SqliteMaxThreads(context, input.bind_data.get()));
 	result->position = 0;
+	if (bind_data.rows_per_group.IsValid()) {
+		auto min_row_id = bind_data.row_id_info.min_rowid.GetIndex();
+		if (min_row_id > 0) {
+			result->position = min_row_id - 1;
+		}
+		result->rows_per_group = bind_data.rows_per_group.GetIndex();
+	}
 	return std::move(result);
 }
 
@@ -191,6 +229,7 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 				output.SetCardinality(out_idx);
 				break;
 			}
+			state.scan_count++;
 			for (idx_t col_idx = 0; col_idx < output.ColumnCount(); col_idx++) {
 				auto &out_vec = output.data[col_idx];
 				auto sqlite_column_type = stmt.GetType(col_idx);

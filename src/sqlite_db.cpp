@@ -222,21 +222,28 @@ bool SQLiteDB::ColumnExists(const string &table_name, const string &column_name)
 	return false;
 }
 
-bool SQLiteDB::GetMaxRowId(const string &table_name, idx_t &max_row_id) {
+bool SQLiteDB::GetRowIdInfo(const string &table_name, RowIdInfo &row_id_info) {
 	SQLiteStatement stmt;
-	if (!TryPrepare(StringUtil::Format("SELECT MAX(ROWID) FROM \"%s\"", SQLiteUtils::SanitizeIdentifier(table_name)),
+	if (!TryPrepare(StringUtil::Format("SELECT MIN(ROWID), MAX(ROWID) FROM \"%s\"",
+	                                   SQLiteUtils::SanitizeIdentifier(table_name)),
 	                stmt)) {
 		return false;
 	}
 	if (!stmt.Step()) {
 		return false;
 	}
-	int64_t val = stmt.GetValue<int64_t>(0);
-	;
-	if (val <= 0) {
+	int64_t min_val = stmt.GetValue<int64_t>(0);
+	int64_t max_val = stmt.GetValue<int64_t>(1);
+	if (max_val <= 0 || min_val <= 0 || max_val < min_val) {
 		return false;
 	}
-	max_row_id = idx_t(val);
+	static constexpr int64_t MAX_ROWS = 20000000000000;
+	if (max_val - min_val >= MAX_ROWS) {
+		// too many rows - this cannot be dense enough to be accurate
+		return false;
+	}
+	row_id_info.min_rowid = NumericCast<idx_t>(min_val);
+	row_id_info.max_rowid = NumericCast<idx_t>(max_val);
 	return true;
 }
 

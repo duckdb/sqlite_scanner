@@ -1,0 +1,21 @@
+# name: test/sql/storage/attach_create_or_replace.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH '__TEST_DIR__/attach_unnest.sqlite' AS tmp (TYPE SQLITE);
+
+statement ok
+USE tmp;
+
+statement ok
+CREATE OR REPLACE TABLE xs AS SELECT unnest(['foo', 'bar', 'baz']) AS x;
+
+query I
+SELECT * FROM xs;
+----
+foo
+bar
+baz

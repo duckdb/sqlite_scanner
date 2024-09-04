@@ -234,7 +234,7 @@ bool SQLiteDB::GetRowIdInfo(const string &table_name, RowIdInfo &row_id_info) {
 	}
 	int64_t min_val = stmt.GetValue<int64_t>(0);
 	int64_t max_val = stmt.GetValue<int64_t>(1);
-	if (max_val <= 0 || min_val <= 0 || max_val < min_val) {
+	if (max_val < 0 || min_val < 0 || max_val < min_val) {
 		return false;
 	}
 	static constexpr int64_t MAX_ROWS = 20000000000000;

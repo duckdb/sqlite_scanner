@@ -1,0 +1,20 @@
+# name: test/sql/storage/attach_unix_timestamp.test
+# description:
+# group: [sqlite_storage]
+
+require sqlite_scanner
+
+statement ok
+ATTACH 'data/db/unix_timestamp.db' AS s (TYPE SQLITE, READONLY)
+
+query I
+SELECT * FROM s.timestamp
+----
+2024-09-23 08:06:20
+2024-09-23 08:06:22
+
+query I
+SELECT * FROM s.timestamp_fractional
+----
+2024-09-23 08:06:20.5
+2024-09-23 08:06:22.123456

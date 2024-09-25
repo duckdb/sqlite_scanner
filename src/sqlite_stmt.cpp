@@ -69,6 +69,7 @@ void SQLiteStatement::CheckTypeMatches(const SqliteBindData &bind_data, sqlite3_
 		auto message = "Invalid type in column \"" + column_name + "\": column was declared as " +
 		               SQLiteUtils::TypeToString(expected_type) + ", found \"" + value_as_text + "\" of type \"" +
 		               SQLiteUtils::TypeToString(sqlite_column_type) + "\" instead.";
+		message += "\n* SET sqlite_all_varchar=true to load all columns as VARCHAR and skip type conversions";
 		throw Exception(ExceptionType::MISMATCH_TYPE, message);
 	}
 }
@@ -79,6 +80,7 @@ void SQLiteStatement::CheckTypeIsFloatOrInteger(sqlite3_value *val, int sqlite_c
 		auto value_as_text = string((const char *)sqlite3_value_text(val));
 		auto message = "Invalid type in column \"" + column_name + "\": expected float or integer, found \"" +
 		               value_as_text + "\" of type \"" + SQLiteUtils::TypeToString(sqlite_column_type) + "\" instead.";
+		message += "\n* SET sqlite_all_varchar=true to load all columns as VARCHAR and skip type conversions";
 		throw Exception(ExceptionType::MISMATCH_TYPE, message);
 	}
 }

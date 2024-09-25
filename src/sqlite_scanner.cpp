@@ -12,7 +12,7 @@
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/config.hpp"
 #include "duckdb/storage/storage_extension.hpp"
-
+#include "duckdb/common/operator/cast_operators.hpp"
 #include <cmath>
 
 namespace duckdb {
@@ -204,6 +204,15 @@ static unique_ptr<GlobalTableFunctionState> SqliteInitGlobalState(ClientContext 
 	return std::move(result);
 }
 
+static timestamp_t ConvertTimestampInteger(sqlite3_value *val) {
+	return Timestamp::FromEpochSeconds(sqlite3_value_int64(val));
+}
+
+static timestamp_t ConvertTimestampFloat(sqlite3_value *val) {
+	int64_t timestamp_micros = Cast::Operation<double, int64_t>(sqlite3_value_double(val) * 1000000.0);
+	return Timestamp::FromEpochMicroSeconds(timestamp_micros);
+}
+
 static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChunk &output) {
 	auto &state = data.local_state->Cast<SqliteLocalState>();
 	auto &gstate = data.global_state->Cast<SqliteGlobalState>();
@@ -255,14 +264,43 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 					    out_vec, (const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
 					break;
 				case LogicalTypeId::DATE:
-					stmt.CheckTypeMatches(bind_data, val, sqlite_column_type, SQLITE_TEXT, col_idx);
-					FlatVector::GetData<date_t>(out_vec)[out_idx] =
-					    Date::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
+					if (sqlite_column_type == SQLITE_INTEGER) {
+						// unix timestamp
+						FlatVector::GetData<date_t>(out_vec)[out_idx] =
+						    Timestamp::GetDate(ConvertTimestampInteger(val));
+					} else if (sqlite_column_type == SQLITE_FLOAT) {
+						FlatVector::GetData<date_t>(out_vec)[out_idx] = Timestamp::GetDate(ConvertTimestampFloat(val));
+					} else if (sqlite_column_type == SQLITE_TEXT) {
+						FlatVector::GetData<date_t>(out_vec)[out_idx] =
+						    Date::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
+					} else {
+						throw NotImplementedException(
+						    "Unimplemented SQLite type for column of type DATE\n* SET sqlite_all_varchar=true to "
+						    "load all columns as VARCHAR and skip type conversions");
+					}
 					break;
 				case LogicalTypeId::TIMESTAMP:
-					stmt.CheckTypeMatches(bind_data, val, sqlite_column_type, SQLITE_TEXT, col_idx);
-					FlatVector::GetData<timestamp_t>(out_vec)[out_idx] =
-					    Timestamp::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
+					// SQLite does not have a timestamp type - but it has "conventions"
+					// See https://www.sqlite.org/lang_datefunc.html
+					// The conventions are:
+					// A text string that is an ISO 8601 date/time value
+					// The number of days including fractional days since -4713-11-24 12:00:00
+					// The number of seconds including fractional seconds since 1970-01-01 00:00:00
+					// for now we only support ISO-8601 and unix timestamps
+					if (sqlite_column_type == SQLITE_INTEGER) {
+						// unix timestamp
+						FlatVector::GetData<timestamp_t>(out_vec)[out_idx] = ConvertTimestampInteger(val);
+					} else if (sqlite_column_type == SQLITE_FLOAT) {
+						FlatVector::GetData<timestamp_t>(out_vec)[out_idx] = ConvertTimestampFloat(val);
+					} else if (sqlite_column_type == SQLITE_TEXT) {
+						// ISO-8601
+						FlatVector::GetData<timestamp_t>(out_vec)[out_idx] =
+						    Timestamp::FromCString((const char *)sqlite3_value_text(val), sqlite3_value_bytes(val));
+					} else {
+						throw NotImplementedException(
+						    "Unimplemented SQLite type for column of type TIMESTAMP\n* SET sqlite_all_varchar=true to "
+						    "load all columns as VARCHAR and skip type conversions");
+					}
 					break;
 				case LogicalTypeId::BLOB:
 					FlatVector::GetData<string_t>(out_vec)[out_idx] = StringVector::AddStringOrBlob(

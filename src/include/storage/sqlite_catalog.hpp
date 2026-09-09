@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "dbconnector/attached.hpp"
+
 #include "duckdb/catalog/catalog.hpp"
 #include "sqlite_options.hpp"
 #include "sqlite_db.hpp"
@@ -62,6 +64,8 @@ public:
 	SQLiteDB *GetInMemoryDatabase();
 	//! Release the in-memory database (if there is any)
 	void ReleaseInMemoryDatabase();
+
+	static dbconnector::attached::AttachedCatalog Lookup(ClientContext &ctx, const Identifier &name);
 
 private:
 	void DropSchema(ClientContext &context, DropInfo &info) override;

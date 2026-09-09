@@ -1,5 +1,6 @@
 include_directories(include)
 
+add_subdirectory(dbconnector)
 add_subdirectory(sqlite)
 add_subdirectory(storage)
 

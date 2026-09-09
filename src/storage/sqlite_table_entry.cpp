@@ -61,10 +61,11 @@ TableFunction SQLiteTableEntry::GetScanFunction(ClientContext &context, unique_p
 	if (use_global_db) {
 		// for in-memory databases or if we have transaction-local changes we can
 		// only do a single-threaded scan using the transaction's connection object
-		result->catalog = &sqlite_catalog;
+		result->catalog_name = sqlite_catalog.GetName();
 		result->rows_per_group = optional_idx();
 	}
-	result->table = this;
+	result->qualified_table_name = QualifiedName(ParentCatalog().GetName(), ParentSchema().name, name);
+	result->context_ptr = transaction.context;
 
 	bind_data = std::move(result);
 	return static_cast<TableFunction>(SqliteScanFunction());
@@ -85,6 +86,17 @@ TableStorageInfo SQLiteTableEntry::GetStorageInfo(ClientContext &context) {
 
 	result.index_info = db.GetIndexInfo(name.GetIdentifierName());
 	return result;
+}
+
+dbconnector::attached::AttachedTable SQLiteTableEntry::Lookup(ClientContext &ctx, QualifiedName name) {
+	using namespace dbconnector::attached;
+
+	AttachedTable table = AttachedTable::Lookup(ctx, "sqlite", name);
+	if (!table) {
+		throw InvalidInputException("Attached SQLite table, name: %s is not found in the specified client session",
+		                            name.ToString());
+	}
+	return table;
 }
 
 } // namespace duckdb

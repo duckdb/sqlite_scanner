@@ -89,7 +89,7 @@ static unique_ptr<FunctionData> SQLiteQueryBind(ClientContext &context, TableFun
 	result->params = std::move(params);
 	result->all_varchar = true;
 	result->file_name = sqlite_catalog.GetDBPath();
-	result->catalog = &sqlite_catalog;
+	result->catalog_name = sqlite_catalog.GetName();
 	return std::move(result);
 }
 

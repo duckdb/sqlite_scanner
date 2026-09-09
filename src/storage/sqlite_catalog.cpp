@@ -99,4 +99,15 @@ DatabaseSize SQLiteCatalog::GetDatabaseSize(ClientContext &context) {
 	return result;
 }
 
+dbconnector::attached::AttachedCatalog SQLiteCatalog::Lookup(ClientContext &ctx, const Identifier &name) {
+	using namespace dbconnector::attached;
+
+	AttachedCatalog attached_catalog = AttachedCatalog::Lookup(ctx, "sqlite", name);
+	if (!attached_catalog) {
+		throw InvalidInputException("Attached SQLite database not found in the specified client session, name: %s",
+		                            name);
+	}
+	return attached_catalog;
+}
+
 } // namespace duckdb

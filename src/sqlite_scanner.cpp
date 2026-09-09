@@ -1,8 +1,11 @@
 #include "duckdb.hpp"
 
+#include "dbconnector/attached.hpp"
+
 #include "sqlite_db.hpp"
 #include "sqlite_stmt.hpp"
 #include "sqlite_scanner.hpp"
+#include "storage/sqlite_table_entry.hpp"
 #include "storage/sqlite_transaction.hpp"
 #include <stdint.h>
 #include "duckdb/parser/parser.hpp"
@@ -158,7 +161,7 @@ static idx_t SqliteMaxThreads(ClientContext &context, const FunctionData *bind_d
 	if (bind_data.command_only) {
 		return 1;
 	}
-	if (bind_data.catalog) {
+	if (!bind_data.catalog_name.empty()) {
 		return 1;
 	}
 	if (!bind_data.row_id_info.max_rowid.IsValid()) {
@@ -218,9 +221,10 @@ SqliteInitLocalState(ExecutionContext &context, TableFunctionInitInput &input, G
 		return std::move(result);
 	}
 	result->column_ids = input.column_ids;
-	if (bind_data.catalog) {
-		// the bind data can outlive the transaction it was bound in (e.g. PREPARE/EXECUTE) - use the current one
-		result->db = &SQLiteTransaction::Get(context.client, *bind_data.catalog).GetDB();
+	if (!bind_data.catalog_name.empty()) {
+		auto attached_catalog = SQLiteCatalog::Lookup(context.client, bind_data.catalog_name);
+		SQLiteCatalog &catalog = attached_catalog.Get<SQLiteCatalog>();
+		result->db = &SQLiteTransaction::Get(context.client, catalog).GetDB();
 	}
 	if (!SqliteParallelStateNext(context.client, bind_data, *result, gstate)) {
 		result->done = true;
@@ -262,8 +266,10 @@ static void SqliteScan(ClientContext &context, TableFunctionInput &data, DataChu
 			output.SetChildCardinality(0);
 			return;
 		}
-		D_ASSERT(bind_data.catalog);
-		auto &transaction = SQLiteTransaction::Get(context, *bind_data.catalog);
+		D_ASSERT(!bind_data.catalog_name.empty());
+		auto attached_catalog = SQLiteCatalog::Lookup(context, bind_data.catalog_name);
+		SQLiteCatalog &catalog = attached_catalog.Get<SQLiteCatalog>();
+		auto &transaction = SQLiteTransaction::Get(context, catalog);
 		auto &con = transaction.GetDB();
 		int64_t affected_rows = con.Execute(bind_data.sql);
 		int64_t *vec_data = FlatVector::GetDataMutable<int64_t>(output.data[0]);
@@ -389,8 +395,12 @@ static InsertionOrderPreservingMap<string> SqliteToString(TableFunctionToStringI
 
 BindInfo SqliteBindInfo(const optional_ptr<FunctionData> bind_data_p) {
 	BindInfo info(ScanType::EXTERNAL);
-	auto &bind_data = bind_data_p->Cast<SqliteBindData>();
-	info.table = bind_data.table;
+	auto &bdata = bind_data_p->Cast<SqliteBindData>();
+	shared_ptr<ClientContext> ctx = bdata.context_ptr.lock();
+	if (ctx) { // cannot fail in known scenarios
+		auto attached_table = SQLiteTableEntry::Lookup(*ctx, bdata.qualified_table_name);
+		info.table = attached_table.Get<SQLiteTableEntry>();
+	}
 	return info;
 }
 

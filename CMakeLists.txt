@@ -4,6 +4,7 @@ set(EXTENSION_NAME ${TARGET_NAME}_extension)
 project(${TARGET_NAME})
 
 include_directories(src/sqlite)
+include_directories(database-connector/src/include)
 
 add_subdirectory(src)
 set(EXTENSION_OBJECT_FILES ${ALL_OBJECT_FILES})

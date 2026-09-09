@@ -29,8 +29,11 @@ struct SqliteBindData : public TableFunctionData {
 
 	optional_idx rows_per_group = 122880;
 
-	optional_ptr<TableCatalogEntry> table;
-	optional_ptr<SQLiteCatalog> catalog = nullptr;
+	QualifiedName qualified_table_name;
+	string catalog_name;
+
+	// required for get_bind_info and only used there
+	weak_ptr<ClientContext> context_ptr;
 };
 
 class SqliteScanFunction : public TableFunction {

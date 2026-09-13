@@ -9,14 +9,11 @@ duckdb_extension_load(sqlite_scanner
 # e.g.: duckdb_extension_load(json)
 duckdb_extension_load(tpch)
 
-# The remote-SQLite tests need httpfs, pinned to the commit the duckdb engine coordinates with
-# (APPLY_PATCHES applies the engine's bundled httpfs patches for the dev-engine API; engine and httpfs
-# move independently and skew between releases). Skipped on WASM: the remote tests do not run there,
-# and httpfs's OpenSSL dependency does not build for emscripten.
+# The remote-SQLite tests need httpfs, needs to be synchronized with the httpfs
+# config in duckdb/.github/config/extensions/httpfs.cmake
 if(NOT EMSCRIPTEN)
     duckdb_extension_load(httpfs
         GIT_URL https://github.com/duckdb/duckdb-httpfs
-        GIT_TAG fafb14f2c899ddfd1998f8adf2e07fbbfd28b3fd
-        APPLY_PATCHES
+        GIT_TAG ac145d8e83d1f3be97b978487cdf08c03f60df8c
     )
 endif()

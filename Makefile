@@ -4,9 +4,6 @@ PROJ_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 EXT_NAME=sqlite_scanner
 EXT_CONFIG=${PROJ_DIR}extension_config.cmake
 
-# Core extensions that we need for crucial testing
-DEFAULT_TEST_EXTENSION_DEPS=httpfs;
-
 # Include the Makefile from extension-ci-tools
 include extension-ci-tools/makefiles/duckdb_extension.Makefile
 
